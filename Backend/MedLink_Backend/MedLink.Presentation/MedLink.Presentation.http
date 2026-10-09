@@ -1,0 +1,6 @@
+@MedLink.Presentation_HostAddress = http://localhost:5031
+
+GET {{MedLink.Presentation_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,196 @@
+# ==========================================
+
+# General
+
+# ==========================================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.bak
+
+# Environment variables and secrets
+
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Private keys and certificates
+
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+
+# ==========================================
+
+# Visual Studio / .NET
+
+# ==========================================
+
+.vs/
+**/.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vsidx
+
+# Test results and coverage
+
+TestResults/
+**/TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+
+*.nupkg
+*.snupkg
+.nuget/packages/
+
+# ASP.NET Core local settings
+
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# ==========================================
+
+# React / Node.js
+
+# ==========================================
+
+node_modules/
+**/node_modules/
+
+dist/
+build/
+.next/
+out/
+.vite/
+coverage/
+
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Package manager / local environment
+
+.npm/
+.eslintcache
+
+# ==========================================
+
+# Flutter / Dart
+
+# ==========================================
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+.pub-cache/
+.pub/
+build/
+**/build/
+
+.flutter-plugins-dependencies
+
+# Android local configuration
+
+local.properties
+**/local.properties
+
+# Signing credentials
+
+key.properties
+*.jks
+*.keystore
+
+# ==========================================
+
+# Python / AI Model / Chatbot
+
+# ==========================================
+
+**pycache**/
+**/**pycache**/
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Python package/build output
+
+*.egg-info/
+wheels/
+pip-wheel-metadata/
+
+# Model checkpoints and large generated files
+
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+*.h5
+*.keras
+*.tflite
+*.pb
+
+# AI datasets and generated artifacts
+
+# Review before committing any dataset
+
+data/raw/
+data/processed/
+datasets/
+checkpoints/
+model_checkpoints/
+wandb/
+mlruns/
+
+# ==========================================
+
+# Docker / local development
+
+# ==========================================
+
+.env.docker
+docker-compose.override.yml
+
+# ==========================================
+
+# IDEs
+
+# ==========================================
+
+.idea/
+.vscode/
+
+# ==========================================
+
+# OS temporary files
+
+# ==========================================
+
+$RECYCLE.BIN/
