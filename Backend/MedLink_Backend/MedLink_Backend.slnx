@@ -1,1 +1,9 @@
-<Solution />
+<Solution>
+  <Folder Name="/Src/">
+    <Project Path="MedLink.Application/MedLink.Application.csproj" />
+    <Project Path="MedLink.Domain/MedLink.Domain.csproj" />
+    <Project Path="MedLink.infrastructure/MedLink.infrastructure.csproj" />
+    <Project Path="MedLink.Presentation/MedLink.Presentation.csproj" />
+    <Project Path="MedLink.Test/MedLink.Test.csproj" />
+  </Folder>
+</Solution>
