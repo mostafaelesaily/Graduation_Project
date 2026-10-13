@@ -16,6 +16,7 @@ namespace MedLink.infrastructure.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.HasDefaultSchema("Shared");
         }
     }
     
