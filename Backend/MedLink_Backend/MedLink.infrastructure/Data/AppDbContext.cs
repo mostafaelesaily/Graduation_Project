@@ -1,4 +1,5 @@
-﻿using MedLink.Domain.Entities.Common.Identity;
+﻿using MedLink.Domain.Entities.Common.File;
+using MedLink.Domain.Entities.Common.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -13,6 +14,7 @@ namespace MedLink.infrastructure.Data
         {   
         }
         public DbSet<AppUser> AppUsers { get; set; }
+        public DbSet<StoredFile> storedFiles { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
