@@ -9,11 +9,11 @@ namespace MedLink.infrastructure.Services
 {
     public class FileService : IFileService
     {
-        public FileService(ILogger logger)
+        public FileService(ILogger<FileService> logger)
         {
             this.logger = logger;
         }
-        private readonly ILogger logger;
+        private readonly ILogger<FileService> logger;
         public async Task DeleteAsync(string filePath)
         {
             if (filePath == null)

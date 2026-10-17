@@ -8,7 +8,7 @@ namespace MedLink.Test.Services
 {
     public class FileServiceTest : IDisposable
     {
-        private readonly Mock<ILogger> loggerMock = new();
+        private readonly Mock<ILogger<FileService>> loggerMock = new();
         private readonly FileService sut;
         private readonly string testFolder = "test-uploads-" + Guid.NewGuid();
         private readonly string wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
