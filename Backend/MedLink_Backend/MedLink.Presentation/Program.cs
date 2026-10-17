@@ -14,6 +14,7 @@ builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddMailService();
 builder.Services.AddFileService();
+builder.Services.AddCacheService(builder.Configuration);
 builder.Services.AddAppDI();
 var app = builder.Build();
 
