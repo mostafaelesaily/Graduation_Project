@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MedLink - SignalR Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 24px auto; padding: 0 16px; }
+    textarea { width: 100%; height: 90px; font-family: monospace; }
+    button { padding: 8px 14px; margin: 6px 6px 6px 0; cursor: pointer; }
+    #status { font-weight: bold; margin-left: 8px; }
+    #log { background: #111; color: #0f0; padding: 12px; min-height: 240px; white-space: pre-wrap; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>MedLink - SignalR Test (development only)</h2>
+  <p>1) Login from Swagger and copy the <b>accessToken</b>. 2) Paste it below. 3) Connect.</p>
+
+  <textarea id="token" placeholder="paste accessToken here"></textarea>
+  <div>
+    <button id="connect">Connect</button>
+    <button id="disconnect">Disconnect</button>
+    <button id="create">Create test notification (REST)</button>
+    <button id="list">List my notifications (REST)</button>
+    <span id="status">Disconnected</span>
+  </div>
+  <pre id="log"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+  <script>
+    let connection = null;
+    const $ = (id) => document.getElementById(id);
+    const token = () => $('token').value.trim();
+    const log = (msg) => { $('log').textContent += new Date().toLocaleTimeString() + "  " + msg + "\n"; };
+
+    async function rest(method, url) {
+      const res = await fetch(url, { method, headers: { 'Authorization': 'Bearer ' + token() } });
+      log(method + " " + url + " -> " + res.status + " " + (await res.text()));
+    }
+
+    $('connect').onclick = async () => {
+      if (!token()) { log("Paste the token first."); return; }
+
+      connection = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/notifications', { accessTokenFactory: () => token() })
+        .withAutomaticReconnect()
+        .build();
+
+      // Not used yet: the server will start sending this event in the next step.
+      connection.on('ReceiveNotification', (n) => log("NEW NOTIFICATION: " + JSON.stringify(n)));
+
+      connection.onreconnecting(() => { $('status').textContent = 'Reconnecting...'; });
+      connection.onreconnected(() => { $('status').textContent = 'Connected'; });
+      connection.onclose(() => { $('status').textContent = 'Disconnected'; log("Connection closed."); });
+
+      try {
+        await connection.start();
+        $('status').textContent = 'Connected';
+        log("Connected. ConnectionId = " + connection.connectionId);
+      } catch (e) {
+        log("Connection failed: " + e);
+      }
+    };
+
+    $('disconnect').onclick = async () => { if (connection) await connection.stop(); };
+    $('create').onclick = () => rest('POST', '/api/notifications/test');
+    $('list').onclick = () => rest('GET', '/api/notifications');
+  </script>
+</body>
+</html>
