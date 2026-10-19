@@ -1,13 +1,10 @@
 ﻿using MedLink.Application.DTOs.Common.Notifications;
+using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Domain.Entities.Common.Notifications;
 using MedLink.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace MedLink.infrastructure.Services.Common
 {
@@ -29,21 +26,19 @@ namespace MedLink.infrastructure.Services.Common
             _logger = logger;
         }
 
-        public async Task<NotificationDto> CreateAsync(
-            string userId,
-            string title,
-            string message,
-            string type,
-            string? link = null)
+        public async Task<NotificationDto> CreateAsync(CreateNotificationDto request)
         {
+            Validate(request);
+
             var notification = new Notification
             {
-                Id = Guid.NewGuid(), // ضمان توليد الـ Guid الجديد
-                UserId = userId,
-                Title = title,
-                Message = message,
-                Type = type,
-                Link = link,
+                // Version 7 = time-ordered Guid: friendlier to the database index than Guid.NewGuid()
+                Id = Guid.CreateVersion7(),
+                UserId = request.UserId,
+                Title = request.Title.Trim(),
+                Message = request.Message.Trim(),
+                Type = request.Type.Trim(),
+                Link = string.IsNullOrWhiteSpace(request.Link) ? null : request.Link.Trim(),
                 IsRead = false,
                 CreatedAtUtc = DateTime.UtcNow
             };
@@ -57,19 +52,17 @@ namespace MedLink.infrastructure.Services.Common
             // 2) Then push in real time. A push failure must NOT fail the operation.
             try
             {
-                await _publisher.PublishAsync(userId, dto);
+                await _publisher.PublishAsync(notification.UserId, dto);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
                     "Notification {NotificationId} was saved but the realtime push to user {UserId} failed.",
-                    notification.Id, userId);
+                    notification.Id, notification.UserId);
             }
 
             return dto;
         }
-
-       
 
         public async Task<IReadOnlyList<NotificationDto>> GetMyNotificationsAsync(
             string userId,
@@ -85,7 +78,7 @@ namespace MedLink.infrastructure.Services.Common
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.CreatedAtUtc)
                 .ThenByDescending(n => n.Id)   // stable order, so pages never overlap
-                .Skip((page - 1) * pageSize)   // تم التصحيح هنا (page - 1)
+                .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(n => new NotificationDto
                 {
@@ -100,6 +93,7 @@ namespace MedLink.infrastructure.Services.Common
                 })
                 .ToListAsync();
         }
+
         public Task<int> GetUnreadCountAsync(string userId)
         {
             return _context.Notifications
@@ -107,7 +101,7 @@ namespace MedLink.infrastructure.Services.Common
         }
 
         public async Task<bool> MarkAsReadAsync(
-            Guid notificationId, // تم التعديل إلى Guid
+            Guid notificationId,
             string userId)
         {
             var notification = await _context.Notifications
@@ -139,6 +133,34 @@ namespace MedLink.infrastructure.Services.Common
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(n => n.IsRead, true)
                     .SetProperty(n => n.ReadAtUtc, DateTime.UtcNow));
+        }
+
+        // The attributes on CreateNotificationDto are only enforced when the DTO comes from an HTTP body.
+        // When another service calls CreateAsync directly nobody checks them, so we validate here too.
+        private static void Validate(CreateNotificationDto request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            if (string.IsNullOrWhiteSpace(request.UserId))
+                throw new BadRequestException("UserId is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Title))
+                throw new BadRequestException("Title is required.");
+            if (request.Title.Trim().Length > Notification.TitleMaxLength)
+                throw new BadRequestException($"Title must not exceed {Notification.TitleMaxLength} characters.");
+
+            if (string.IsNullOrWhiteSpace(request.Message))
+                throw new BadRequestException("Message is required.");
+            if (request.Message.Trim().Length > Notification.MessageMaxLength)
+                throw new BadRequestException($"Message must not exceed {Notification.MessageMaxLength} characters.");
+
+            if (string.IsNullOrWhiteSpace(request.Type))
+                throw new BadRequestException("Type is required.");
+            if (request.Type.Trim().Length > Notification.TypeMaxLength)
+                throw new BadRequestException($"Type must not exceed {Notification.TypeMaxLength} characters.");
+
+            if (request.Link is not null && request.Link.Trim().Length > Notification.LinkMaxLength)
+                throw new BadRequestException($"Link must not exceed {Notification.LinkMaxLength} characters.");
         }
 
         private static NotificationDto MapToDto(

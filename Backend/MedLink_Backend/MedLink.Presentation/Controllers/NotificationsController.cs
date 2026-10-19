@@ -1,4 +1,5 @@
-﻿using MedLink.Application.Exceptions;
+﻿using MedLink.Application.DTOs.Common.Notifications;
+using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ namespace MedLink.Presentation.Controllers
 
         // GET api/notifications?page=1&pageSize=20
         [HttpGet]
-        public async Task<IActionResult> GetMyNotifications(
+        public async Task<ActionResult<IReadOnlyList<NotificationDto>>> GetMyNotifications(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
@@ -35,14 +36,14 @@ namespace MedLink.Presentation.Controllers
 
         // GET api/notifications/unread-count
         [HttpGet("unread-count")]
-        public async Task<IActionResult> GetUnreadCount()
+        public async Task<ActionResult<UnreadCountDto>> GetUnreadCount()
         {
             var count = await notificationService.GetUnreadCountAsync(CurrentUserId);
-            return Ok(new { count });
+            return Ok(new UnreadCountDto { Count = count });
         }
 
-        // POST api/notifications/5/read
-        [HttpPost("{id:int}/read")]
+        // POST api/notifications/{id}/read
+        [HttpPost("{id:guid}/read")]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
             var updated = await notificationService.MarkAsReadAsync(id, CurrentUserId);
@@ -63,15 +64,17 @@ namespace MedLink.Presentation.Controllers
         // Works in Development only. We will delete it when the real features use the service.
         // POST api/notifications/test
         [HttpPost("test")]
-        public async Task<IActionResult> CreateTest([FromServices] IWebHostEnvironment environment)
+        public async Task<ActionResult<NotificationDto>> CreateTest([FromServices] IWebHostEnvironment environment)
         {
             if (!environment.IsDevelopment()) return NotFound();
 
-            var created = await notificationService.CreateAsync(
-                CurrentUserId,
-                "Test notification",
-                "This is a test notification",
-                "Test");
+            var created = await notificationService.CreateAsync(new CreateNotificationDto
+            {
+                UserId = CurrentUserId,
+                Title = "Test notification",
+                Message = "This is a test notification",
+                Type = "Test"
+            });
 
             return Ok(created);
         }
