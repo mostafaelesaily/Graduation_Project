@@ -23,6 +23,7 @@ class MainApp extends StatelessWidget {
             selectionColor: ColorsManager.primaryColor.withValues(alpha: 0.25),
             selectionHandleColor: ColorsManager.primaryColor,
           ),
+          fontFamily: 'LiberationSans',
         ),
         home: LoginScreen(),
       ),

@@ -6,6 +6,7 @@ import 'package:medlink/Core/Style/text_styles.dart';
 class AuthScaffold extends StatelessWidget {
   final logo;
   final String title, titleDescription;
+  final bool? isCentered;
   final Widget child;
   const new({
     super.key,
@@ -13,6 +14,7 @@ class AuthScaffold extends StatelessWidget {
     required this.title,
     required this.titleDescription,
     required this.child,
+    this.isCentered,
   });
 
   @override
@@ -23,7 +25,12 @@ class AuthScaffold extends StatelessWidget {
         crossAxisAlignment: .stretch,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 24.w, horizontal: 16),
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 24.w,
+              bottom: 12.w,
+            ),
             child: Column(
               children: [
                 Column(
@@ -33,7 +40,7 @@ class AuthScaffold extends StatelessWidget {
                       children: [
                         SizedBox(
                           width: 340.w,
-                          height: 66.w,
+                          height: 50.w,
                           child: Image.asset(logo),
                         ),
                         Text(
@@ -42,10 +49,18 @@ class AuthScaffold extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Column(
+                    Row(
+                      mainAxisAlignment: isCentered == true ? .start : .center,
                       children: [
-                        Text(title, style: TextStyles.authTitle),
-                        Text(titleDescription, style: TextStyles.fadedText),
+                        Column(
+                          crossAxisAlignment: isCentered == true
+                              ? .start
+                              : .center,
+                          children: [
+                            Text(title, style: TextStyles.authTitle),
+                            Text(titleDescription, style: TextStyles.fadedText),
+                          ],
+                        ),
                       ],
                     ),
 
@@ -55,10 +70,11 @@ class AuthScaffold extends StatelessWidget {
               ],
             ),
           ),
-          SvgPicture.asset(
-            'assets/svgs/auth_svg.svg',
-            height: 170.w,
-            width: double.infinity,
+          Expanded(
+            child: SvgPicture.asset(
+              'assets/svgs/auth_svg.svg',
+              width: double.infinity,
+            ),
           ),
         ],
       ),
