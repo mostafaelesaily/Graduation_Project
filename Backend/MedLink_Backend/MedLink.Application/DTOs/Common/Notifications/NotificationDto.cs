@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-
-namespace MedLink.Application.DTOs.Common.Notifications
+﻿namespace MedLink.Application.DTOs.Common.Notifications
 {
     public class NotificationDto
     {
@@ -24,4 +19,3 @@ namespace MedLink.Application.DTOs.Common.Notifications
         public string? Link { get; set; }
     }
 }
-

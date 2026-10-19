@@ -1,12 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 
 namespace MedLink.Domain.Entities.Common.Notifications
 {
     public class Notification
     {
+        // Single source of truth for the limits
+        public const int TitleMaxLength = 150;
+        public const int MessageMaxLength = 1000;
+        public const int TypeMaxLength = 50;
+        public const int LinkMaxLength = 500;
+
         public Guid Id { get; set; }
 
         public string UserId { get; set; } = string.Empty;
@@ -26,4 +29,3 @@ namespace MedLink.Domain.Entities.Common.Notifications
         public string? Link { get; set; }
     }
 }
-
