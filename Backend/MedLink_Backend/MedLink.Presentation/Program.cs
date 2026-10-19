@@ -1,9 +1,12 @@
 using MedLink.Application.Dependency_Injection;
 using MedLink.Application.Interfaces.Common;
 using MedLink.infrastructure.DependencyInjection;
+
 using MedLink.infrastructure.Services.Common;
 using MedLink.Presentation.Extensions;
 using MedLink.Presentation.Hubs;
+
+using MedLink.Presentation.Extensions;
 using MedLink.Presentation.Middlewares;
 using MedLink.Presentation.Realtime;
 using Microsoft.OpenApi;
@@ -38,9 +41,11 @@ builder.Services.AddAppDI();
 builder.Services.AddCQRS(builder.Configuration);
 
 
+
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
 var app = builder.Build();
 
 

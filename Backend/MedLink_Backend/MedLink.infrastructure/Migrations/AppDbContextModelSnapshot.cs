@@ -88,6 +88,7 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("AspNetUsers", "Shared");
                 });
 
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -132,6 +133,7 @@ namespace MedLink.infrastructure.Migrations
 
                     b.ToTable("Notifications", "Shared");
                 });
+
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
@@ -415,6 +417,7 @@ namespace MedLink.infrastructure.Migrations
 
                     b.Navigation("RefreshTokens");
                 });
+
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.Notification", b =>
                 {

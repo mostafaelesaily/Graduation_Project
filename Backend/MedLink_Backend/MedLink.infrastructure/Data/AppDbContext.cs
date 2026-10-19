@@ -22,6 +22,10 @@ namespace MedLink.infrastructure.Data
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
         public DbSet<ProviderLocations> providerLocations { get; set; }
 
+
+        public DbSet<ProviderProfile> ProviderProfiles { get; set; }
+        public DbSet<ProviderLocations> providerLocations { get; set; }
+ 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -77,6 +81,9 @@ namespace MedLink.infrastructure.Data
                         v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v));
             });
 
+
+            // Configure storedFiles entity Start : 
+
             builder.Entity<StoredFile>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -123,6 +130,9 @@ namespace MedLink.infrastructure.Data
                 .HasForeignKey(pl => pl.ProviderProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
             // Relationship End .
+
+
+
 
         }
     }
