@@ -1,4 +1,5 @@
-﻿using MedLink.Domain.Entities.Common.Identity;
+﻿using MedLink.Domain.Entities.Common;
+using MedLink.Domain.Entities.Common.Identity;
 using MedLink.infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;

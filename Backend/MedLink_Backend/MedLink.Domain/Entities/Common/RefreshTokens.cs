@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MedLink.Domain.Entities.Common.Identity
+namespace MedLink.Domain.Entities.Common
 {
     [Owned]
     public class RefreshTokens

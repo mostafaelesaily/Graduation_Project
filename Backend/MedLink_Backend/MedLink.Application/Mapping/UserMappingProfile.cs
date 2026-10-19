@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using MedLink.Application.DTOs.Common.identity;
+using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using System;
 using System.Collections.Generic;

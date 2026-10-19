@@ -4,6 +4,7 @@ using MedLink.Application.DTOs.Common.identity;
 using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Services.Common;
+using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Test.Common;
 using Microsoft.AspNetCore.Identity;
