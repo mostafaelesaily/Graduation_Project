@@ -1,4 +1,7 @@
 ﻿using MedLink.Application.DTOs.Common.Notifications;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MedLink.Application.Interfaces.Common
 {
@@ -19,7 +22,7 @@ namespace MedLink.Application.Interfaces.Common
         Task<int> GetUnreadCountAsync(string userId);
 
         Task<bool> MarkAsReadAsync(
-            int notificationId,
+            Guid notificationId, // تم التعديل إلى Guid
             string userId);
 
         // returns how many notifications were updated

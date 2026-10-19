@@ -43,7 +43,7 @@ namespace MedLink.Presentation.Controllers
 
         // POST api/notifications/5/read
         [HttpPost("{id:int}/read")]
-        public async Task<IActionResult> MarkAsRead(int id)
+        public async Task<IActionResult> MarkAsRead(Guid id)
         {
             var updated = await notificationService.MarkAsReadAsync(id, CurrentUserId);
             if (!updated) throw new NotFoundException("Notification not found");

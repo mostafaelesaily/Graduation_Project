@@ -22,4 +22,8 @@
     <ProjectReference Include="..\MedLink.infrastructure\MedLink.infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+
 </Project>

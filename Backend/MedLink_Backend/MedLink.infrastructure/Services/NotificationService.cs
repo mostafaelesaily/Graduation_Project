@@ -4,6 +4,10 @@ using MedLink.Domain.Entities.Common.Notifications;
 using MedLink.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace MedLink.infrastructure.Services.Common
 {
@@ -34,6 +38,7 @@ namespace MedLink.infrastructure.Services.Common
         {
             var notification = new Notification
             {
+                Id = Guid.NewGuid(), // ضمان توليد الـ Guid الجديد
                 UserId = userId,
                 Title = title,
                 Message = message,
@@ -64,6 +69,8 @@ namespace MedLink.infrastructure.Services.Common
             return dto;
         }
 
+       
+
         public async Task<IReadOnlyList<NotificationDto>> GetMyNotificationsAsync(
             string userId,
             int page = 1,
@@ -78,7 +85,7 @@ namespace MedLink.infrastructure.Services.Common
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.CreatedAtUtc)
                 .ThenByDescending(n => n.Id)   // stable order, so pages never overlap
-                .Skip((page - 1) * pageSize)
+                .Skip((page - 1) * pageSize)   // تم التصحيح هنا (page - 1)
                 .Take(pageSize)
                 .Select(n => new NotificationDto
                 {
@@ -93,7 +100,6 @@ namespace MedLink.infrastructure.Services.Common
                 })
                 .ToListAsync();
         }
-
         public Task<int> GetUnreadCountAsync(string userId)
         {
             return _context.Notifications
@@ -101,7 +107,7 @@ namespace MedLink.infrastructure.Services.Common
         }
 
         public async Task<bool> MarkAsReadAsync(
-            int notificationId,
+            Guid notificationId, // تم التعديل إلى Guid
             string userId)
         {
             var notification = await _context.Notifications
