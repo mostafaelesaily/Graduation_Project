@@ -144,7 +144,7 @@ namespace MedLink.Application.Services.Common
                 throw new  BadRequestException("User registration failed. Errors: " + errors);
             }
             var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var confirmationLink = $"https://localhost:44302/api/Account/ConfirmMail?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+            var confirmationLink = $"https://localhost:7048/api/Account/ConfirmMail?userId={user.Id}&token={Uri.EscapeDataString(token)}";
             try
             {
                 await mailService.sendMail
