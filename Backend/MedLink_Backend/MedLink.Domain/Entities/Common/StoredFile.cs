@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MedLink.Domain.Entities.Common.File
+namespace MedLink.Domain.Entities.Common
 {
     public class StoredFile
     {

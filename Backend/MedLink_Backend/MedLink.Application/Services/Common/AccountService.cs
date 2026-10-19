@@ -2,6 +2,7 @@
 using MedLink.Application.DTOs.Common.identity;
 using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
+using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
