@@ -25,7 +25,8 @@ namespace MedLink.Application.Services.Common
             IConfiguration configuration,
             ILogger<AccountService> logger,
             UserManager<AppUser> userManager,
-            IMailService mailService
+            IMailService mailService,
+            IFileService fileService
         )
         {
             this.mapper = mapper;
@@ -33,12 +34,14 @@ namespace MedLink.Application.Services.Common
             this.userManager = userManager;
             this.logger = logger;
             this.mailService = mailService;
+            this.fileService = fileService;
         }
         private readonly IMapper mapper;
         private readonly IConfiguration configuration;
         private readonly ILogger<AccountService> logger;
         private readonly UserManager<AppUser> userManager;
         private readonly IMailService mailService;
+        private readonly IFileService fileService;
         public async Task<string> GenrateAccessToken(AppUser appUser)
         {
             var claims = new List<Claim>()
@@ -144,7 +147,7 @@ namespace MedLink.Application.Services.Common
                 throw new  BadRequestException("User registration failed. Errors: " + errors);
             }
             var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var confirmationLink = $"https://localhost:7048/api/Account/ConfirmMail?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+            var confirmationLink = $"https://localhost:44302/api/Account/ConfirmMail?userId={user.Id}&token={Uri.EscapeDataString(token)}";
             try
             {
                 await mailService.sendMail
@@ -203,6 +206,11 @@ namespace MedLink.Application.Services.Common
                 throw new Exception("Failed to logout user");
             }
             logger.LogInformation("User with ID: {UserId} logged out successfully.", userId);
+        }
+
+        public Task<RegisterResponseDto> RegisterProvider(RegisterProviderRequest providerRequest)
+        {
+          
         }
     }
 }
