@@ -1,4 +1,4 @@
-﻿using MedLink.Domain.Abstract;
+﻿using MedLink.Application.Interfaces.Common;
 using MedLink.infrastructure.Data;
 using MedLink.infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.Storage;
