@@ -43,14 +43,23 @@ export default function LoginPage() {
         password,
       });
 
-      if (response.data?.token) {
-        localStorage.setItem('token', response.data.token);
+      const accessToken = response.data?.accessToken || response.data?.token;
+      if (accessToken) {
+        localStorage.setItem('token', accessToken);
+      }
+      if (response.data?.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
+
+      const loggedInName = response.data?.userName || response.data?.name;
+      if (loggedInName) {
+        localStorage.setItem('userName', loggedInName);
       }
 
       setSuccessMessage('Logged in successfully! Redirecting...');
 
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/home');
       }, 1500);
 
     } catch (error) {
