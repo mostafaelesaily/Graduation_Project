@@ -36,12 +36,28 @@ namespace MedLink.Application.Services.Common
             this.mailService = mailService;
             this.fileService = fileService;
         }
+
+        public AccountService(IMapper object1, IConfiguration object2, ILogger<AccountService> object3, UserManager<AppUser> object4, IMailService object5)
+        {
+            this.object1 = object1;
+            this.object2 = object2;
+            this.object3 = object3;
+            this.object4 = object4;
+            this.object5 = object5;
+        }
+
         private readonly IMapper mapper;
         private readonly IConfiguration configuration;
         private readonly ILogger<AccountService> logger;
         private readonly UserManager<AppUser> userManager;
         private readonly IMailService mailService;
         private readonly IFileService fileService;
+        private IMapper object1;
+        private IConfiguration object2;
+        private ILogger<AccountService> object3;
+        private UserManager<AppUser> object4;
+        private IMailService object5;
+
         public async Task<string> GenrateAccessToken(AppUser appUser)
         {
             var claims = new List<Claim>()
@@ -210,7 +226,12 @@ namespace MedLink.Application.Services.Common
 
         public Task<RegisterResponseDto> RegisterProvider(RegisterProviderRequest providerRequest)
         {
-          
+            throw new NotImplementedException();
         }
+
+        //public Task<RegisterResponseDto> RegisterProvider(RegisterProviderRequest providerRequest)
+        //{
+
+        //}
     }
 }

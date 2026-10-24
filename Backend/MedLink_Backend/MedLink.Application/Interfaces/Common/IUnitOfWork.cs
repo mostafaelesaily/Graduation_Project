@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MedLink.Domain.Abstract
+namespace MedLink.Application.Interfaces.Common
 {
     public interface IUnitOfWork : IDisposable
     {
