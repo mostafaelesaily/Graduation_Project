@@ -50,6 +50,12 @@ namespace MedLink.Presentation.Controllers
             await accountService.Logout(userId);
             return Ok(new { Message = "Logged out successfully" });
         }
+        [HttpPost("[action]")]
+        public async Task<IActionResult> RegisterProvider([FromForm] RegisterProviderRequest request)
+        {
+            var result = await accountService.RegisterProvider(request);
+            return Ok(result);
+        }
 
     }
 }

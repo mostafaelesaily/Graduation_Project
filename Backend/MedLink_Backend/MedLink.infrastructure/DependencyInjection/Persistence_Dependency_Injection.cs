@@ -1,10 +1,8 @@
-﻿using MedLink.infrastructure.Data;
+﻿using MedLink.Application.Interfaces.Common;
+using MedLink.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MedLink.infrastructure.DependencyInjection
 {
@@ -16,10 +14,13 @@ namespace MedLink.infrastructure.DependencyInjection
             IConfiguration configuration
             )
         {
-           services.AddDbContext<AppDbContext>(options =>
-           {
-               options.UseSqlServer(configuration.GetConnectionString("MedLink_DB"));
-           });
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseSqlServer(configuration.GetConnectionString("MedLink_DB"));
+            });
+
+            services.AddScoped<IUnitOfWork, MedLink.infrastructure.UnitOfWork.UnitOfWork>();
+
             return services;
         }
     }
