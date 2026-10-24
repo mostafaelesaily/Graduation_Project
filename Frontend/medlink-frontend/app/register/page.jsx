@@ -23,6 +23,8 @@ export default function RegisterPage() {
 
   const router = useRouter();
 
+  const [verifyEmail, setVerifyEmail] = useState('');
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -58,11 +60,7 @@ export default function RegisterPage() {
         role
       });
 
-      setSuccessMessage('Account created successfully! Redirecting to login...');
-
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      setVerifyEmail(email);
 
     } catch (error) {
       console.error("Full Error Object:", error);
@@ -100,6 +98,32 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (verifyEmail) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4 font-sans">
+        <div className="text-2xl font-bold text-slate-900 mb-6">
+          💙 Med<span className="text-blue-500">Link</span>
+        </div>
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-10 text-center">
+          <div className="relative mx-auto w-24 h-24 rounded-full bg-sky-100 flex items-center justify-center text-4xl">
+            ✉️
+            <span className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-green-500 text-white text-sm flex items-center justify-center">
+              ✓
+            </span>
+          </div>
+          <h2 className="mt-5 text-2xl font-bold text-slate-900">Verify your email</h2>
+          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+            We have sent a verification email. Click the link inside and you will be redirected automatically.
+          </p>
+          <p className="mt-5 text-xs text-slate-500">
+            Already verified?{' '}
+            <Link href="/login" className="font-bold text-blue-600 hover:underline">Log In</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-sky-50/50 p-4 font-sans">
