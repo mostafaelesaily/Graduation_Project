@@ -45,7 +45,7 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<bool>("IsActice")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -112,12 +112,10 @@ namespace MedLink.infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
-                    b.Property<double>("Latitude")
-                        .HasMaxLength(255)
+                    b.Property<double?>("Latitude")
                         .HasColumnType("float");
 
-                    b.Property<double>("Longitude")
-                        .HasMaxLength(255)
+                    b.Property<double?>("Longitude")
                         .HasColumnType("float");
 
                     b.Property<string>("PhoneNumber")

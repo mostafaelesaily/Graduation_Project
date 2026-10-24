@@ -52,8 +52,8 @@ namespace MedLink.infrastructure.Data
                 entity.ToTable("ProviderLocations");
                 entity.HasKey(x => x.Id);
                 entity.Property(x => x.Address).IsRequired().HasMaxLength(500);
-                entity.Property(x => x.Longitude).IsRequired().HasMaxLength(255);
-                entity.Property(x => x.Latitude).IsRequired().HasMaxLength(255);
+                entity.Property(x => x.Longitude);   // nullable
+                entity.Property(x => x.Latitude);    // nullable
                 entity.Property(x => x.IsActive).HasDefaultValue(true);
             });
             // Configure ProviderLocations entity End .
@@ -62,7 +62,7 @@ namespace MedLink.infrastructure.Data
             builder.Entity<AppUser>(entity =>
             {
                 entity.ToTable("AppUsers");
-                entity.Property(x => x.IsActice).HasDefaultValue(true);
+                entity.Property(x => x.IsActice).HasDefaultValue(false);
             });
             // Configure AppUser entity End .
 

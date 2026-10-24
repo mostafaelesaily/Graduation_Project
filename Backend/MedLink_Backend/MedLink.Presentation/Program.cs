@@ -1,6 +1,5 @@
 
 using MedLink.Application.Dependency_Injection;
-using MedLink.Application.Interfaces.Common;
 using MedLink.infrastructure.DependencyInjection;
 using MedLink.Presentation.Extensions;
 using MedLink.Presentation.Middlewares;
@@ -9,11 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Application & Infrastructure Services
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddMailService();
@@ -23,6 +20,8 @@ builder.Services.AddAppDI();
 builder.Services.AddCQRS(builder.Configuration);
 
 var app = builder.Build();
+
+await app.SeedDatabaseAsync();
 
 if (app.Environment.IsDevelopment())
 {

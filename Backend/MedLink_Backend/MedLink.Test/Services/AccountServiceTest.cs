@@ -6,7 +6,9 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Services.Common;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Enums;
 using MedLink.Test.Common;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -21,6 +23,8 @@ namespace MedLink.Test.Services
         private readonly Mock<ILogger<AccountService>> loggerMock = new();
         private readonly Mock<UserManager<AppUser>> userManagerMock;
         private readonly Mock<IMailService> mailServiceMock = new();
+        private readonly Mock<IFileService> fileServiceMock = new();
+        private readonly Mock<IUnitOfWork> unitOfWorkMock = new();
         private readonly AccountService sut;
 
         public AccountServiceTest()
@@ -38,8 +42,12 @@ namespace MedLink.Test.Services
                 configurationMock.Object,
                 loggerMock.Object,
                 userManagerMock.Object,
-                mailServiceMock.Object);
+                mailServiceMock.Object,
+                fileServiceMock.Object,
+                unitOfWorkMock.Object);
         }
+
+        // ---------- Helpers ----------
 
         private static AppUser CreateUser(string id = "user-1", string email = "test@medlink.com", bool emailConfirmed = true)
         {
@@ -50,6 +58,29 @@ namespace MedLink.Test.Services
                 UserName = email,
                 EmailConfirmed = emailConfirmed,
                 RefreshTokens = new List<RefreshTokens>()
+            };
+        }
+
+        private static RegisterProviderRequest CreateValidProviderRequest(
+            string fileName = "license.pdf", long fileLength = 1024)
+        {
+            var fileMock = new Mock<IFormFile>();
+            fileMock.Setup(f => f.FileName).Returns(fileName);
+            fileMock.Setup(f => f.Length).Returns(fileLength);
+            fileMock.Setup(f => f.ContentType).Returns("application/pdf");
+
+            return new RegisterProviderRequest
+            {
+                userName = "alnoorlab",
+                Email = "lab@medlink.com",
+                phoneNumber = "01012345678",
+                Password = "Test@1234",
+                ProviderName = "Al-Noor Lab",
+                Address = "12 El-Geish St, Tanta",
+                postalCode = "31511",
+                taxNumber = "123456789",
+                ProviderType = ProviderType.Lab,
+                LicenseFile = fileMock.Object
             };
         }
 
@@ -344,6 +375,102 @@ namespace MedLink.Test.Services
 
             var ex = await Assert.ThrowsAsync<Exception>(() => sut.Logout(user.Id));
             Assert.Equal("Failed to logout user", ex.Message);
+        }
+
+        // ---------- RegisterProvider: Validation ----------
+
+        [Fact]
+        public async Task RegisterProvider_NullRequest_ThrowsArgumentNullException()
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RegisterProvider(null!));
+        }
+
+        [Theory]
+        [InlineData("Email")]
+        [InlineData("userName")]
+        [InlineData("Password")]
+        [InlineData("phoneNumber")]
+        [InlineData("ProviderName")]
+        [InlineData("Address")]
+        [InlineData("postalCode")]
+        [InlineData("taxNumber")]
+        public async Task RegisterProvider_MissingRequiredField_ThrowsBadRequestException(string propertyName)
+        {
+            var request = CreateValidProviderRequest();
+            typeof(RegisterProviderRequest).GetProperty(propertyName)!.SetValue(request, "");
+
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.RegisterProvider(request));
+
+            fileServiceMock.Verify(
+                f => f.UploadFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterProvider_NoLicenseFile_ThrowsBadRequestException()
+        {
+            var request = CreateValidProviderRequest();
+            request.LicenseFile = null!;
+
+            var ex = await Assert.ThrowsAsync<BadRequestException>(() => sut.RegisterProvider(request));
+            Assert.Equal("License file is required.", ex.Message);
+        }
+
+        [Fact]
+        public async Task RegisterProvider_FileTooLarge_ThrowsBadRequestException()
+        {
+            var request = CreateValidProviderRequest(fileLength: 6 * 1024 * 1024);
+
+            var ex = await Assert.ThrowsAsync<BadRequestException>(() => sut.RegisterProvider(request));
+            Assert.Equal("License file must not exceed 5 MB.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData("license.txt")]
+        [InlineData("license.exe")]
+        [InlineData("license")]
+        public async Task RegisterProvider_InvalidFileExtension_ThrowsBadRequestException(string fileName)
+        {
+            var request = CreateValidProviderRequest(fileName: fileName);
+
+            var ex = await Assert.ThrowsAsync<BadRequestException>(() => sut.RegisterProvider(request));
+            Assert.Equal("License file must be PDF, JPG or PNG.", ex.Message);
+        }
+
+        [Fact]
+        public async Task RegisterProvider_InvalidProviderType_ThrowsBadRequestException()
+        {
+            var request = CreateValidProviderRequest();
+            request.ProviderType = (ProviderType)99;
+
+            var ex = await Assert.ThrowsAsync<BadRequestException>(() => sut.RegisterProvider(request));
+            Assert.Equal("Invalid provider type.", ex.Message);
+        }
+
+        // ---------- RegisterProvider: Conflict ----------
+
+        [Fact]
+        public async Task RegisterProvider_EmailAlreadyExists_ThrowsConflictException()
+        {
+            var request = CreateValidProviderRequest();
+            userManagerMock.Setup(x => x.FindByEmailAsync(request.Email)).ReturnsAsync(CreateUser());
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.RegisterProvider(request));
+
+            fileServiceMock.Verify(
+                f => f.UploadFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterProvider_UserNameAlreadyTaken_ThrowsConflictException()
+        {
+            var request = CreateValidProviderRequest();
+            userManagerMock.Setup(x => x.FindByEmailAsync(request.Email)).ReturnsAsync((AppUser?)null);
+            userManagerMock.Setup(x => x.FindByNameAsync(request.userName)).ReturnsAsync(CreateUser());
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.RegisterProvider(request));
+
+            fileServiceMock.Verify(
+                f => f.UploadFileAsync(It.IsAny<IFormFile>(), It.IsAny<string>()), Times.Never);
         }
     }
 }
