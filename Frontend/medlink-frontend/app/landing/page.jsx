@@ -29,7 +29,8 @@ const navLinks = [
 function Logo() {
   return (
     <span className="flex items-center gap-2 text-2xl font-bold text-blue-900">
-      <span className="text-blue-600">💙</span> MedLink
+      <img src="/WhatsApp Image .jpeg" alt="MedLink Logo" className="h-8 w-8 rounded-full object-cover" />
+      MedLink
     </span>
   );
 }
@@ -97,25 +98,36 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <div className="relative mx-auto w-full max-w-md">
+            <div className="relative mx-auto w-full max-w-md pl-8 pt-2">
               <div className="absolute -right-6 -top-6 h-72 w-72 rounded-full bg-blue-100/70" />
-              <div className="relative space-y-4">
-                <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-lg">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white">★</span>
-                  <div className="text-sm">
-                    <p className="font-semibold text-blue-950">AI Health Assistant</p>
-                    <p className="text-slate-500">How can I help you today?</p>
-                  </div>
-                </div>
-                <div className="rounded-xl bg-white p-3 text-sm text-slate-400 shadow">
-                  🔍 Search for doctors, hospitals, labs...
-                </div>
-                <ul className="w-48 space-y-3 rounded-2xl bg-white p-4 text-sm font-medium text-blue-950 shadow-lg">
-                  {['Doctors', 'Hospitals', 'Clinics', 'Laboratories', 'Radiology'].map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
+
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-xs overflow-hidden rounded-3xl shadow-xl">
+                <img src="/Doctor.jpg" alt="Doctor using MedLink" className="h-full w-full object-cover" />
               </div>
+
+              <img
+                src="/ai-bot-badge.png"
+                alt="AI Assistant"
+                className="absolute -bottom-3 -right-3 h-16 w-16 rounded-2xl shadow-lg"
+              />
+
+              <div className="absolute -left-8 top-0 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-lg">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white">★</span>
+                <div className="text-sm">
+                  <p className="font-semibold text-blue-950">AI Health Assistant</p>
+                  <p className="text-slate-500">How can I help you today?</p>
+                </div>
+              </div>
+
+              <div className="absolute -left-8 top-24 w-56 rounded-xl bg-white p-3 text-sm text-slate-400 shadow">
+                🔍 Search for doctors, hospitals, labs...
+              </div>
+
+              <ul className="absolute -left-8 top-40 w-48 space-y-3 rounded-2xl bg-white p-4 text-sm font-medium text-blue-950 shadow-lg">
+                {['Doctors', 'Hospitals', 'Clinics', 'Laboratories', 'Radiology'].map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
@@ -155,14 +167,19 @@ export default function LandingPage() {
         </section>
 
         <section id="about" className="mx-auto max-w-6xl px-6 py-10">
-          <div className="flex flex-col items-center justify-between gap-6 rounded-2xl bg-gradient-to-r from-blue-100 to-sky-50 px-8 py-10 md:flex-row">
-            <div>
+          <div className="flex flex-col items-center justify-between gap-6 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-100 to-sky-50 md:flex-row">
+            <div className="px-8 py-10">
               <h2 className="text-xl font-bold text-blue-950">Your Health, Our Priority</h2>
               <p className="mt-1 text-sm text-slate-600">Join thousands of users who trust MedLink for their healthcare needs.</p>
+              <Link href="/register" className="mt-5 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700">
+                Get Started
+              </Link>
             </div>
-            <Link href="/register" className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700">
-              Get Started
-            </Link>
+            <img
+              src="/Doctor With Patient.jpg"
+              alt="Doctor with patient"
+              className="h-48 w-full object-cover md:h-full md:w-80"
+            />
           </div>
         </section>
       </main>

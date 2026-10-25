@@ -15,6 +15,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using MedLink.Domain.Enums;
+using MedLink.Application.DTOs.Common.identityDTOs;
 
 namespace MedLink.Application.Services.Common
 {
@@ -28,7 +29,8 @@ namespace MedLink.Application.Services.Common
             UserManager<AppUser> userManager,
             IMailService mailService,
             IFileService fileService,
-            IUnitOfWork unitOfWork
+            IUnitOfWork unitOfWork,
+            IGoogleAuthService googleAuthService
         )
         {
             this.mapper = mapper;
@@ -38,16 +40,18 @@ namespace MedLink.Application.Services.Common
             this.mailService = mailService;
             this.fileService = fileService;
             this.unitOfWork = unitOfWork;
+            this.googleAuthService = googleAuthService;
 
         }
 
-    
+
         private readonly IMapper mapper;
         private readonly IConfiguration configuration;
         private readonly ILogger<AccountService> logger;
         private readonly UserManager<AppUser> userManager;
         private readonly IMailService mailService;
         private readonly IFileService fileService;
+        private readonly IGoogleAuthService googleAuthService;
 
         private readonly IUnitOfWork unitOfWork;
 
@@ -346,6 +350,87 @@ namespace MedLink.Application.Services.Common
 
             if (!Enum.IsDefined(typeof(ProviderType), providerRequest.ProviderType))
                 throw new BadRequestException("Invalid provider type.");
+        }
+
+        public async Task<AuthenticationResponseDto> GoogleSignInAsync(GoogleLoginDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (string.IsNullOrWhiteSpace(request.idToken))
+                throw new BadRequestException("Google ID token is required.");
+
+            logger.LogInformation("Attempting Google sign-in.");
+
+            var googleUser = await googleAuthService.ValidateIdTokenAsync(request.idToken);
+
+            var user = await userManager.FindByLoginAsync("Google", googleUser.Subject);
+
+            if (user == null)
+            {
+                var existingEmailUser = await userManager.FindByEmailAsync(googleUser.Email);
+                if (existingEmailUser != null)
+                {
+                    logger.LogWarning("Google sign-in attempted for an email already registered without a Google link: {Email}", googleUser.Email);
+                    throw new ConflictException(
+                        "An account with this email already exists. Please log in with your password, then link your Google account.");
+                }
+
+                user = new AppUser
+                {
+                    UserName = googleUser.Email,
+                    Email = googleUser.Email,
+                    EmailConfirmed = true,
+                    IsActice = true
+                };
+
+                var createResult = await userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Google sign-in failed to create user for email: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to create account. Errors: " + errors);
+                }
+
+                var addLoginResult = await userManager.AddLoginAsync(user, new UserLoginInfo("Google", googleUser.Subject, "Google"));
+                if (!addLoginResult.Succeeded)
+                {
+                    await userManager.DeleteAsync(user);
+                    var errors = string.Join(", ", addLoginResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Failed to link Google login for email: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to link Google account. Errors: " + errors);
+                }
+
+                var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
+                if (!roleResult.Succeeded)
+                {
+                    await userManager.DeleteAsync(user);
+                    var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Failed to assign role for Google sign-in user: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to assign role. Errors: " + errors);
+                }
+
+                logger.LogInformation("New user created via Google sign-in with email: {Email}", googleUser.Email);
+            }
+
+            if (!user.IsActice)
+            {
+                logger.LogWarning("Google sign-in blocked for inactive account: {Email}", user.Email);
+                throw new UnauthorizedException("Your account is not active yet. Please wait for admin approval.");
+            }
+
+            var accessToken = await GenrateAccessToken(user);
+            var refreshToken = await GenrateRefreshToken();
+
+            user.RefreshTokens ??= new List<RefreshTokens>();
+            user.RefreshTokens.Add(refreshToken);
+            await userManager.UpdateAsync(user);
+
+            return new AuthenticationResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpireOn = DateTime.UtcNow.AddHours(3),
+                Message = "Google sign-in successful"
+            };
         }
     }
 }

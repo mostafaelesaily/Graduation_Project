@@ -1,10 +1,11 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import API from '@/api/axios';
+import { renderGoogleButton } from '@/lib/googleAuth';
 
 const translations = {
   en: {
@@ -67,10 +68,12 @@ export default function LoginPage() {
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   const router = useRouter();
+  const googleButtonRef = useRef(null);
 
   const handleLanguageChange = (e) => {
     const selectedLang = e.target.value;
@@ -165,6 +168,46 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleGoogleToken = async (idToken) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setGoogleLoading(true);
+
+    try {
+      const response = await API.post('/Account/GoogleSignIn', { idToken });
+
+      const accessToken = response.data?.accessToken;
+      if (accessToken) localStorage.setItem('token', accessToken);
+      if (response.data?.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
+
+      setSuccessMessage('Logged in successfully! Redirecting...');
+      setTimeout(() => {
+        router.push('/home');
+      }, 1500);
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+
+      if (error.response) {
+        const apiData = error.response.data;
+        setErrorMessage(apiData?.message || apiData?.title || 'Google sign-in failed. Please try again.');
+      } else {
+        setErrorMessage(error.message || 'Google sign-in failed.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const container = googleButtonRef.current;
+    if (!container) return;
+    renderGoogleButton(container, handleGoogleToken, container.offsetWidth || 300).catch((err) => {
+      console.error('Failed to render Google button:', err);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
@@ -392,6 +435,26 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Google Button */}
+          <div className="relative w-full">
+            <button
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
+            >
+              <span>🌐</span> {googleLoading ? 'Connecting...' : 'Continue with Google'}
+            </button>
+            <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
+          </div>
+
+          {/* Register Link */}
+          <p className="text-center text-xs text-gray-500 mt-6">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-teal-600 font-bold hover:underline">
+              Sign Up
+            </Link>
+          </p>
         </div>
       </div>
 

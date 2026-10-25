@@ -1,4 +1,5 @@
 ﻿using MedLink.Application.DTOs.Common.identity;
+using MedLink.Application.DTOs.Common.identityDTOs;
 using MedLink.Application.Interfaces.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -54,6 +55,13 @@ namespace MedLink.Presentation.Controllers
         public async Task<IActionResult> RegisterProvider([FromForm] RegisterProviderRequest request)
         {
             var result = await accountService.RegisterProvider(request);
+            return Ok(result);
+        }
+
+        [HttpPost("[action]")]
+        public async Task<IActionResult> GoogleSignIn([FromBody] GoogleLoginDto request)
+        {
+            var result = await accountService.GoogleSignInAsync(request);
             return Ok(result);
         }
 
