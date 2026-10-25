@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import 'package:medlink/Core/Dialogs/error_dialog.dart';
 import 'package:medlink/Core/Shared/auth_button.dart';
 import 'package:medlink/Core/Shared/google_button.dart';
 import 'package:medlink/Core/Shared/input_field.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
 import 'package:medlink/Core/Style/text_styles.dart';
 import 'package:medlink/Core/Widgets/auth_scaffold.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_cubit.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_state.dart';
 
 class LoginScreen extends StatefulWidget {
   new({super.key});
@@ -73,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
               hintText: 'Enter your Password',
               isObsecure: true,
               icon: Icons.lock_outline,
+              issuffixShown: true,
             ),
             Row(
               mainAxisAlignment: .spaceBetween,
@@ -129,15 +135,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
-            AuthButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  _emailController.clear();
-                  _passwordController.clear();
-                  _formKey.currentState!.reset();
+            BlocConsumer<LoginCubit, LoginState>(
+              listener: (context, state) {
+                if (state.status == LoginStatus.success) {}
+
+                if (state.status == LoginStatus.failure) {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return ErrorDialog(
+                        error: state.errorMessage?['message'].toString(),
+                      );
+                    },
+                  );
                 }
               },
-              text: 'Log in',
+              builder: (context, state) {
+                return AuthButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      context.read<LoginCubit>().login(
+                        email: _emailController.text,
+                        password: _passwordController.text,
+                      );
+                      _emailController.clear();
+                      _passwordController.clear();
+                      _formKey.currentState!.reset();
+                    }
+                  },
+                  text: state.status == LoginStatus.loading ? null : 'Log in',
+                  icon: state.status == LoginStatus.loading
+                      ? CircularProgressIndicator()
+                      : null,
+                );
+              },
             ),
             Stack(
               alignment: .center,
@@ -176,7 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    context.goNamed('signup');
+                  },
                   child: Text(
                     'Sign Up',
                     style: TextStyle(

@@ -5,8 +5,9 @@ import 'package:medlink/Core/Style/text_styles.dart';
 
 class AuthButton extends StatelessWidget {
   final String? text;
+  final Widget? icon;
   final void Function()? onPressed;
-  const new({super.key, required this.onPressed, this.text});
+  const new({super.key, required this.onPressed, this.text, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +30,7 @@ class AuthButton extends StatelessWidget {
           elevation: 0,
         ),
 
-        child: Text(text ?? '', style: TextStyles.buttonText),
+        child: text != null ? Text(text!, style: TextStyles.buttonText) : icon,
       ),
     );
   }

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
 
-class InputField extends StatelessWidget {
+class InputField extends StatefulWidget {
   final TextEditingController controller;
   final String? hintText, labelText;
   final IconData? icon;
-  final bool? isObsecure, isRequired;
+  final bool? isRequired, issuffixShown;
+  bool isObsecure;
   final String? Function(String?)? validator;
-  const new({
+  new({
     super.key,
     required this.controller,
     required this.validator,
@@ -16,15 +17,21 @@ class InputField extends StatelessWidget {
     this.hintText,
     this.labelText,
     this.icon,
-    this.isObsecure,
+    this.isObsecure = false,
+    this.issuffixShown,
   });
 
   @override
+  State<InputField> createState() => _InputFieldState();
+}
+
+class _InputFieldState extends State<InputField> {
+  @override
   Widget build(BuildContext context) {
     return FormField<String>(
-      initialValue: controller.text,
+      initialValue: widget.controller.text,
       autovalidateMode: .disabled,
-      validator: validator,
+      validator: widget.validator,
       builder: (field) {
         final hasError = field.hasError;
         final borderColor = hasError ? Colors.red : const Color(0xffddecfa);
@@ -35,13 +42,13 @@ class InputField extends StatelessWidget {
           children: [
             RichText(
               text: TextSpan(
-                text: labelText,
+                text: widget.labelText,
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
-                children: isRequired == true
+                children: widget.isRequired == true
                     ? [
                         TextSpan(
                           text: ' *',
@@ -65,11 +72,45 @@ class InputField extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TextFormField(
-                controller: controller,
-                obscureText: isObsecure ?? false,
+                controller: widget.controller,
+                obscureText: widget.isObsecure ?? false,
                 style: const TextStyle(fontSize: 12),
                 onChanged: field.didChange,
                 decoration: InputDecoration(
+                  suffixIconConstraints: BoxConstraints(
+                    minWidth: 12,
+                    minHeight: 12,
+                  ),
+                  suffix: widget.issuffixShown == true
+                      ? Transform.translate(
+                          offset: Offset(0, 2.5),
+                          child: IconButton(
+                            onPressed: () => setState(() {
+                              widget.isObsecure = !widget.isObsecure;
+                            }),
+                            style: IconButton.styleFrom(
+                              minimumSize: Size(12.w, 12.w),
+                              maximumSize: Size(30.w, 30.w),
+                              padding: EdgeInsets.only(
+                                right: 14,
+                                top: 10,
+                                bottom: 10,
+                              ),
+                              visualDensity: .compact,
+                              tapTargetSize: .shrinkWrap,
+                              splashFactory: null,
+                              overlayColor: Colors.transparent,
+                              iconSize: 12,
+                            ),
+                            icon: Icon(
+                              widget.isObsecure == true
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 12,
+                            ),
+                          ),
+                        )
+                      : null,
                   contentPadding: const EdgeInsets.only(left: 14),
                   constraints: BoxConstraints(minHeight: 38.w, maxHeight: 38.w),
                   fillColor: Colors.white,
@@ -77,9 +118,9 @@ class InputField extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     spacing: 12,
                     children: [
-                      Icon(icon, size: 12.w),
+                      Icon(widget.icon, size: 12.w),
                       Text(
-                        hintText ?? '',
+                        widget.hintText ?? '',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],
