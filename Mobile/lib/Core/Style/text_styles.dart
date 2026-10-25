@@ -8,4 +8,9 @@ class TextStyles {
   );
 
   static const TextStyle authTitle = TextStyle(fontSize: 23, fontWeight: .bold);
+  static const TextStyle buttonText = TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: .bold,
+  );
 }
