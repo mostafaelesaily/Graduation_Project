@@ -16,6 +16,7 @@ namespace MedLink.Application.Dependency_Injection
                   typeof(UserMappingProfile).Assembly
                   );
             services.AddScoped<IAccountService, AccountService>();
+            services.AddScoped<IAdminService, AdminService>();
             return services;
         }
     }

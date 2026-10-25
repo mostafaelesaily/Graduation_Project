@@ -2,27 +2,27 @@
 {
     public static class CorsExtensions
     {
-        public static IServiceCollection AddCQRS
-            (
-             this IServiceCollection services , 
-             IConfiguration configuration
-            )
+        public static IServiceCollection AddCorsPolicy(
+            this IServiceCollection services,
+            IConfiguration configuration)
         {
             services.AddCors(options =>
             {
-                options.AddPolicy("MedLinkPolicy", policy =>
+                options.AddPolicy("ReactPolicy", policy =>
                 {
                     var allowedOrigins = configuration
                         .GetSection("Cors:AllowedOrigins")
-                        .Get<string[]>() ?? [];
+                        .Get<string[]>();
 
                     policy
-                        .WithOrigins(allowedOrigins)
+                        .WithOrigins(allowedOrigins ?? Array.Empty<string>())
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
             });
+
             return services;
         }
     }
 }
+

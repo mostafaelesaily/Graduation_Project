@@ -1,4 +1,3 @@
-
 using MedLink.Application.Dependency_Injection;
 using MedLink.infrastructure.DependencyInjection;
 using MedLink.Presentation.Extensions;
@@ -8,23 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// CORS configuration
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("ReactPolicy", policy =>
-    {
-        var allowedOrigins = builder.Configuration
-            .GetSection("Cors:AllowedOrigins")
-            .Get<string[]>();
+// CORS
+builder.Services.AddCorsPolicy(builder.Configuration);
 
-        policy
-            .WithOrigins(allowedOrigins ?? Array.Empty<string>())
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
-
-// Swagger  
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -34,7 +20,6 @@ builder.Services.AddMailService();
 builder.Services.AddFileService();
 builder.Services.AddCacheService(builder.Configuration);
 builder.Services.AddAppDI();
-builder.Services.AddCQRS(builder.Configuration);
 
 var app = builder.Build();
 
