@@ -6,6 +6,7 @@ import 'package:medlink/Core/Style/text_styles.dart';
 class AuthScaffold extends StatelessWidget {
   final logo;
   final String title, titleDescription;
+  final bool? isCentered;
   final Widget child;
   const new({
     super.key,
@@ -13,54 +14,78 @@ class AuthScaffold extends StatelessWidget {
     required this.title,
     required this.titleDescription,
     required this.child,
+    this.isCentered,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: .stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 24.w, horizontal: 16),
-            child: Column(
-              children: [
-                Column(
-                  spacing: 20.w,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: .stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 24.w,
+                  bottom: 12.w,
+                ),
+                child: Column(
                   children: [
                     Column(
+                      spacing: 20.w,
                       children: [
-                        SizedBox(
-                          width: 340.w,
-                          height: 66.w,
-                          child: Image.asset(logo),
+                        Column(
+                          children: [
+                            SizedBox(
+                              width: 340.w,
+                              height: 50.w,
+                              child: Image.asset(logo),
+                            ),
+                            Text(
+                              'Your Health, Our Connection.',
+                              style: TextStyles.fadedText,
+                            ),
+                          ],
                         ),
-                        Text(
-                          'Your Health, Our Connection.',
-                          style: TextStyles.fadedText,
+                        Row(
+                          mainAxisAlignment: isCentered == true
+                              ? .start
+                              : .center,
+                          children: [
+                            Column(
+                              crossAxisAlignment: isCentered == true
+                                  ? .start
+                                  : .center,
+                              children: [
+                                Text(title, style: TextStyles.authTitle),
+                                Text(
+                                  titleDescription,
+                                  style: TextStyles.fadedText,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text(title, style: TextStyles.authTitle),
-                        Text(titleDescription, style: TextStyles.fadedText),
-                      ],
-                    ),
 
-                    child,
+                        child,
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              SvgPicture.asset(
+                'assets/svgs/auth_svg.svg',
+                width: double.infinity,
+                height: MediaQuery.sizeOf(context).width * 941 / 1672,
+                fit: BoxFit.fill,
+              ),
+            ],
           ),
-          SvgPicture.asset(
-            'assets/svgs/auth_svg.svg',
-            height: 170.w,
-            width: double.infinity,
-          ),
-        ],
+        ),
       ),
     );
   }
