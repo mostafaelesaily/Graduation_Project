@@ -21,6 +21,8 @@ namespace MedLink.Application.Mapping
             CreateMap<RegisterProviderRequest, AppUser>()
            .ForMember(dest => dest.PasswordHash,
             opt => opt.Ignore())
+           .ForMember(dest => dest.PhoneNumber,
+            opt => opt.MapFrom(src => src.phoneNumber))
            .ForMember(dest => dest.IsActice,
             opt => opt.MapFrom(src => false));
 

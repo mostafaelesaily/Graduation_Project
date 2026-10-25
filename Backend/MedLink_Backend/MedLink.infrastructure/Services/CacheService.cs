@@ -57,18 +57,21 @@ namespace MedLink.infrastructure.Services
 
         }
 
-        public Task<T?> GetOrSetAsync<T>
+        public async Task<T?> GetOrSetAsync<T>
             (string key, Func<Task<T?>> factory,
             TimeSpan? slidingExpiration = null,
             TimeSpan? absoluteExpiration = null)
         {
-          var value = GetAsync<T>(key);
+            var value = await GetAsync<T>(key);
             if (value != null)
             {
                 return value;
             }
-            var newValue = factory();
-            setAsync(key, newValue, slidingExpiration, absoluteExpiration);
+            var newValue = await factory();
+            if (newValue != null)
+            {
+                await setAsync(key, newValue, slidingExpiration, absoluteExpiration);
+            }
             return newValue;
         }
 

@@ -17,7 +17,7 @@ Desktop.ini
 .env.*
 !.env.example
 !.env.sample
-
+appsettings.json
 # Private keys and certificates
 
 *.pem
