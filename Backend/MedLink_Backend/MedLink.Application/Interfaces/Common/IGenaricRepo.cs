@@ -10,8 +10,9 @@ namespace MedLink.Application.Interfaces.Common
         Task<IReadOnlyList<T>> GetAllAsync();
         Task<IReadOnlyList<T>> GetAllAsync(
             ISpecification<T> specification);
-        Task<T?> FindAsync(ISpecification<T> 
+        Task<T?> FindAsync(ISpecification<T>
             specification);
+        Task<int> CountAsync(ISpecification<T> specification);
         Task AddAsync(T entity);
         void Update(T entity);
         void Delete(T entity);

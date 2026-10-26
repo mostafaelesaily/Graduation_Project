@@ -93,6 +93,43 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("AppUsers", "Shared");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Title");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notification", "Shared");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,6 +412,17 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("RefreshTokens");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "User")
+                        .WithMany("notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
@@ -450,6 +498,8 @@ namespace MedLink.infrastructure.Migrations
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Identity.AppUser", b =>
                 {
+                    b.Navigation("notifications");
+
                     b.Navigation("providerProfile")
                         .IsRequired();
                 });

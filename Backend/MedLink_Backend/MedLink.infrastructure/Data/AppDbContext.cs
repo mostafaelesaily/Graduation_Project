@@ -16,13 +16,11 @@ namespace MedLink.infrastructure.Data
         public DbSet<StoredFile> storedFiles { get; set; }
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
         public DbSet<ProviderLocations> providerLocations { get; set; } 
+        public DbSet<Notifications> notifications { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
             builder.HasDefaultSchema("Shared");
-
-
-         
             // Configure storedFiles entity Start : 
 
             builder.Entity<StoredFile>(entity =>
@@ -34,6 +32,16 @@ namespace MedLink.infrastructure.Data
                 entity.Property(e => e.CreatedAt).IsRequired();
             });
             // Configure storedFiles entity End .
+
+            // Configure Notification Start :
+            builder.Entity<Notifications>().ToTable("Notification");
+            builder.Entity<Notifications>().HasKey(n => n.Id);
+            builder.Entity<Notifications>().HasIndex(n => n.UserId);
+            builder.Entity<Notifications>().HasIndex(n => n.Title);
+            builder.Entity<Notifications>().HasIndex(n => new { n.UserId, n.IsRead });
+            builder.Entity<Notifications>().Property(n => n.Title).IsRequired().HasMaxLength(200);
+            builder.Entity<Notifications>().Property(n => n.Message).HasMaxLength(2000);
+            // Configure Notification End.
 
             // Configure ProviderProfile entity Start :
             builder.Entity<ProviderProfile>(entity =>
@@ -78,6 +86,12 @@ namespace MedLink.infrastructure.Data
                 .HasOne(pl => pl.ProviderProfile)
                 .WithMany(p => p.ProviderLocations)
                 .HasForeignKey(pl => pl.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Configure one-to-many relationship between AppUser and Notifications
+            builder.Entity<Notifications>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.notifications)
+                .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             // Relationship End .
 

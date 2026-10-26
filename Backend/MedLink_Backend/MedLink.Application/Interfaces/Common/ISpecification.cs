@@ -13,9 +13,11 @@ namespace MedLink.Application.Interfaces.Common
         List<Expression<Func<T, object>>> Includes { get; }
         // Order-By : 
         Expression<Func<T, object>>? OrderBy { get; }
-        // Order-By-Descending : 
+        // Order-By-Descending :
         Expression<Func<T, object>>? OrderByDescending { get; }
-        // Paggenation : 
+        // Then-By-Descending (secondary/tie-breaker ordering) :
+        Expression<Func<T, object>>? ThenByDescending { get; }
+        // Paggenation :
         int Skip { get; }
 
         int Take { get; }
