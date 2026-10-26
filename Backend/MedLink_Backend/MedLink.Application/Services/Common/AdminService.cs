@@ -8,9 +8,7 @@ using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text;
+
 
 namespace MedLink.Application.Services.Common
 {

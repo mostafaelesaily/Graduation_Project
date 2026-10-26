@@ -25,7 +25,9 @@ namespace MedLink.Test.Services
         private readonly Mock<IMailService> mailServiceMock = new();
         private readonly Mock<IFileService> fileServiceMock = new();
         private readonly Mock<IUnitOfWork> unitOfWorkMock = new();
+        private readonly Mock<IGoogleAuthService> googleAuthServiceMock = new();
         private readonly AccountService sut;
+
 
         public AccountServiceTest()
         {
@@ -44,7 +46,13 @@ namespace MedLink.Test.Services
                 userManagerMock.Object,
                 mailServiceMock.Object,
                 fileServiceMock.Object,
-                unitOfWorkMock.Object);
+                unitOfWorkMock.Object,
+                googleAuthServiceMock.Object
+
+
+                );
+                
+
         }
 
         // ---------- Helpers ----------

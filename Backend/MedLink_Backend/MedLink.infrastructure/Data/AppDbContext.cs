@@ -1,5 +1,6 @@
 ﻿using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Common.Notifications;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -15,7 +16,9 @@ namespace MedLink.infrastructure.Data
         public DbSet<AppUser> AppUsers { get; set; }
         public DbSet<StoredFile> storedFiles { get; set; }
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
-        public DbSet<ProviderLocations> providerLocations { get; set; } 
+        public DbSet<ProviderLocations> providerLocations { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -65,6 +68,42 @@ namespace MedLink.infrastructure.Data
                 entity.Property(x => x.IsActice).HasDefaultValue(false);
             });
             // Configure AppUser entity End .
+
+            // Configure Notification entity Start :
+            builder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("Notifications");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Source).IsRequired();
+                entity.Property(e => e.Type).IsRequired().HasMaxLength(Notification.TypeMaxLength);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(Notification.TitleMaxLength);
+                entity.Property(e => e.Message).IsRequired().HasMaxLength(Notification.MessageMaxLength);
+                entity.Property(e => e.Link).HasMaxLength(Notification.LinkMaxLength);
+                entity.Property(e => e.TargetAudience);
+                entity.Property(e => e.CreatedByUserId);
+                entity.HasOne<AppUser>().WithMany().HasForeignKey(n => n.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+                entity.Property(e => e.CreatedAtUtc).IsRequired();
+                entity.HasIndex(n => new { n.CreatedByUserId, n.CreatedAtUtc });
+            });
+            // Configure Notification entity End .
+
+            // Configure NotificationRecipient entity Start :
+            builder.Entity<NotificationRecipient>(entity =>
+            {
+                entity.ToTable("NotificationRecipients");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.IsRead).HasDefaultValue(false);
+                entity.Property(e => e.IsHidden).HasDefaultValue(false);
+                entity.Property(e => e.CreatedAtUtc).IsRequired();
+                entity.HasOne(r => r.Notification)
+                    .WithMany(n => n.Recipients)
+                    .HasForeignKey(r => r.NotificationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(r => new { r.NotificationId, r.UserId }).IsUnique();
+                entity.HasIndex(r => new { r.UserId, r.IsHidden, r.CreatedAtUtc });
+            });
+            // Configure NotificationRecipient entity End .
 
             // Relationships Start : 
             // Configure one-to-one relationship between ProviderProfile and AppUser

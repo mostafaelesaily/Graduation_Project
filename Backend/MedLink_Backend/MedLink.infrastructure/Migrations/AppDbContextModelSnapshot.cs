@@ -93,6 +93,92 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("AppUsers", "Shared");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetAudience")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId", "CreatedAtUtc");
+
+                    b.ToTable("Notifications", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.NotificationRecipient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("HiddenAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsHidden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsHidden", "CreatedAtUtc");
+
+                    b.ToTable("NotificationRecipients", "Shared");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,6 +461,25 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("RefreshTokens");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.Notification", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.NotificationRecipient", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.Notifications.Notification", "Notification")
+                        .WithMany("Recipients")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
@@ -452,6 +557,11 @@ namespace MedLink.infrastructure.Migrations
                 {
                     b.Navigation("providerProfile")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications.Notification", b =>
+                {
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderProfile", b =>
