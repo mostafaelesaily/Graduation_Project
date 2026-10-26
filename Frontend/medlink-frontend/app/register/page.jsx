@@ -579,36 +579,25 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
-      
+
       {/* --- Navbar العلوي بلون خلفية #F7F7F7 (يوجّه إلى /landing) --- */}
       <header className="w-full py-4 px-8 border-b border-gray-100 flex justify-between items-center sticky top-0 z-50" style={{ backgroundColor: '#F7F7F7' }}>
         <div className="flex items-center gap-4">
           <Link href="/landing" className="flex items-center">
-            <img 
-              src="/WhatsApp Image .jpeg" 
-              alt="MedLink Logo" 
+            <img
+              src="/WhatsApp Image .jpeg"
+              alt="MedLink Logo"
               className="h-10 w-auto object-contain cursor-pointer"
             />
           </Link>
-          <Link 
-            href="/landing" 
+          <Link
+            href="/landing"
             className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
           >
             {t.backHome}
           </Link>
         </div>
-
-        {/* Left Side - Logo, Info & Illustration */}
-        <div className="hidden md:flex w-5/12 bg-sky-50/70 p-8 flex-col justify-between border-r border-sky-100">
-          <div>
-            {/* MedLink Image Logo */}
-            <div className="mb-6 h-12 flex items-center">
-              <img
-                src="/WhatsApp Image .jpeg"
-                alt="MedLink Logo"
-                className="h-10 object-contain"
-              />
-            </div>
+      </header>
 
       {/* --- محتوى الصفحة الرئيسي --- */}
       <div className="flex-grow flex items-center justify-center bg-sky-50/50 p-4 py-8">
@@ -617,11 +606,10 @@ export default function RegisterPage() {
           {/* Left Side - Logo, Info & Illustration */}
           <div className="hidden md:flex w-5/12 bg-sky-50/70 p-8 flex-col justify-between border-r border-sky-100">
             <div>
-              {/* MedLink Image Logo */}
               <div className="mb-6 h-12 flex items-center">
-                <img 
-                  src="/WhatsApp Image .jpeg" 
-                  alt="MedLink Logo" 
+                <img
+                  src="/WhatsApp Image .jpeg"
+                  alt="MedLink Logo"
                   className="h-10 object-contain"
                 />
               </div>
@@ -633,7 +621,6 @@ export default function RegisterPage() {
                 {t.welcomeSubtitle}
               </p>
 
-              {/* Features List */}
               <div className="space-y-3 mb-6">
                 <div className="flex items-start gap-3">
                   <div className="p-1.5 bg-white rounded-xl shadow-sm text-teal-600 text-sm">🧠</div>
@@ -658,117 +645,38 @@ export default function RegisterPage() {
                     <p className="text-[10px] text-gray-400">{t.bookDesc}</p>
                   </div>
                 </div>
-
-          {/* Bottom Healthcare Illustration */}
-          <div className="mt-4 flex flex-col items-center">
-            <div className="w-full relative h-40">
-              <img
-                src="/WhatsApp Image 2026-10-19 at 17.50.37.jpeg"
-                alt="Healthcare Illustration"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div className="text-center text-[10px] text-gray-400 font-medium mt-2">
-              Better access. Healthier tomorrows.
-            </div>
-
-          {/* Role Selection */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <button
-              type="button"
-              onClick={() => selectRole('Patient')}
-              className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
-                role === 'Patient'
-                  ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="w-10 h-10 bg-sky-100 text-teal-700 rounded-xl flex items-center justify-center font-bold">👤</div>
-              <div>
-                <div className="text-xs font-bold text-gray-900">Patient / User</div>
-                <div className="text-[10px] text-gray-400 leading-tight mt-0.5">Find and book healthcare services</div>
               </div>
-            </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => selectRole('Provider')}
-              className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
-                role === 'Provider'
-                  ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="w-10 h-10 bg-gray-100 text-gray-700 rounded-xl flex items-center justify-center font-bold">🩺</div>
-              <div>
-                <div className="text-xs font-bold text-gray-900">Provider</div>
-                <div className="text-[10px] text-gray-400 leading-tight mt-0.5">Manage your services and reach more patients</div>
+            {/* Bottom Healthcare Illustration */}
+            <div className="mt-4 flex flex-col items-center">
+              <div className="w-full relative h-40">
+                <img
+                  src="/WhatsApp Image 2026-10-19 at 17.50.37.jpeg"
+                  alt="Healthcare Illustration"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="text-center text-[10px] text-gray-400 font-medium mt-2">
+                Better access. Healthier tomorrows.
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleRegister} className="space-y-4" noValidate autoComplete="off">
+          {/* Right Side - Form */}
+          <div className="w-full md:w-7/12 p-8 sm:p-10 bg-white">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">{t.createAccount}</h2>
+            <p className="text-xs text-gray-500 mb-6">{t.chooseRole}</p>
 
-            {role === 'Provider' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Type *</label>
-                  <select
-                    value={serviceType}
-                    onChange={(e) => {
-                      setServiceType(e.target.value);
-                      if (fieldErrors.serviceType) setFieldErrors({ ...fieldErrors, serviceType: '' });
-                    }}
-                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
-                      fieldErrors.serviceType ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
-                    }`}
-                  >
-                    <option value="">Select service type</option>
-                    {PROVIDER_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.serviceType && (
-                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceType}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Address *</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => {
-                      setAddress(e.target.value);
-                      if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
-                    }}
-                    placeholder="e.g. Cairo"
-                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
-                      fieldErrors.address ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
-                    }`}
-                  />
-                  {fieldErrors.address && (
-                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.address}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Full Name */}
-            <div>
-              <label className="block text-xs font-bold text-gray-800 mb-1.5">Full Name *</label>
-              <input
-                type="text"
-                name="no-autofill-fullname"
-                autoComplete="off"
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                  if (fieldErrors.fullName) setFieldErrors({ ...fieldErrors, fullName: '' });
-                }}
-                placeholder="Enter your full name"
-                className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
-                  fieldErrors.fullName ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+            {/* Role Selection */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => selectRole('Patient')}
+                className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
+                  role === 'Patient'
+                    ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="w-10 h-10 bg-sky-100 text-teal-700 rounded-xl flex items-center justify-center font-bold">👤</div>
@@ -780,7 +688,7 @@ export default function RegisterPage() {
 
               <button
                 type="button"
-                onClick={() => setRole('Provider')}
+                onClick={() => selectRole('Provider')}
                 className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                   role === 'Provider'
                     ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
@@ -807,6 +715,52 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleRegister} className="space-y-4" noValidate autoComplete="off">
+
+              {role === 'Provider' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Type *</label>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => {
+                        setServiceType(e.target.value);
+                        if (fieldErrors.serviceType) setFieldErrors({ ...fieldErrors, serviceType: '' });
+                      }}
+                      className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                        fieldErrors.serviceType ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                      }`}
+                    >
+                      <option value="">Select service type</option>
+                      {PROVIDER_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                    {fieldErrors.serviceType && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceType}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">Address *</label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
+                      }}
+                      placeholder="e.g. Cairo"
+                      className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                        fieldErrors.address ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                      }`}
+                    />
+                    {fieldErrors.address && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.address}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-800 mb-1.5">{t.fullName}</label>
@@ -965,64 +919,50 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            {/* OR Divider */}
-            <div className="relative flex py-4 items-center">
-              <div className="flex-grow border-t border-gray-100"></div>
-              <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-semibold">{t.orText}</span>
-              <div className="flex-grow border-t border-gray-100"></div>
-            </div>
+            {role !== 'Provider' && (
+              <>
+                {/* OR Divider */}
+                <div className="relative flex py-4 items-center">
+                  <div className="flex-grow border-t border-gray-100"></div>
+                  <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-semibold">{t.orText}</span>
+                  <div className="flex-grow border-t border-gray-100"></div>
+                </div>
 
-            {/* Google Button */}
-            <button
-              type="button"
-              className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 transition duration-200"
-            >
-              {loading ? 'Creating Account...' : role === 'Provider' ? 'Next' : 'Sign Up'}
-            </button>
+                {/* Google Button */}
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
+                  >
+                    <span>🌐</span> {googleLoading ? 'Connecting...' : t.googleBtn}
+                  </button>
+                  <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
+                </div>
+              </>
+            )}
 
-          {role !== 'Provider' && (
-            <>
-              {/* OR Divider */}
-              <div className="relative flex py-4 items-center">
-                <div className="flex-grow border-t border-gray-100"></div>
-                <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-semibold">OR</span>
-                <div className="flex-grow border-t border-gray-100"></div>
-              </div>
-
-              {/* Google Button */}
-              <div className="relative w-full">
-                <button
-                  type="button"
-                  aria-hidden="true"
-                  tabIndex={-1}
-                  className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
-                >
-                  <span>🌐</span> {googleLoading ? 'Connecting...' : 'Continue with Google'}
-                </button>
-                <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
-              </div>
-            </>
-          )}
-
-          {/* Login Link */}
-          <p className="text-center text-xs text-gray-500 mt-6">
-            Already have an account?{' '}
-            <Link href="/login" className="text-teal-600 font-bold hover:underline">
-              Log In
-            </Link>
-          </p>
+            {/* Login Link */}
+            <p className="text-center text-xs text-gray-500 mt-6">
+              {t.haveAccount}{' '}
+              <Link href="/login" className="text-teal-600 font-bold hover:underline">
+                {t.logIn}
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
 
       {/* --- Footer السفلي الاحترافي والمتعدد الأعمدة --- */}
       <footer className="w-full border-t border-gray-100 bg-white py-10 px-8 mt-auto">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          
+
           <div className="md:col-span-1 space-y-3">
             <div className="flex items-center gap-2">
-              <img 
-                src="/WhatsApp Image .jpeg" 
-                alt="MedLink Logo" 
+              <img
+                src="/WhatsApp Image .jpeg"
+                alt="MedLink Logo"
                 className="h-7 w-auto object-contain"
               />
             </div>
