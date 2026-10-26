@@ -42,6 +42,15 @@ namespace MedLink.infrastructure.Repositories
             return await query.FirstOrDefaultAsync();
         }
 
+        public async Task<int> CountAsync(ISpecification<T> specification)
+        {
+            var query = SpecificationEvaluator<T>.GetCountQuery(
+                dbset.AsNoTracking(),
+                specification);
+
+            return await query.CountAsync();
+        }
+
         public async Task<T?> GetByIdAsync(params object[] id)
         {
             return await dbset.FindAsync(id);

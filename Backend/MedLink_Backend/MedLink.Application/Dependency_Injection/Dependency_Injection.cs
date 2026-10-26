@@ -17,6 +17,7 @@ namespace MedLink.Application.Dependency_Injection
                   );
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IAdminService, AdminService>();
+            services.AddScoped<INotificationService, NotificationService>();
             return services;
         }
     }

@@ -9,6 +9,7 @@ namespace MedLink.Domain.Entities.Common.Identity
     {
         public bool IsActice { get; set; } = true;
         public ICollection<RefreshTokens> RefreshTokens { get; set; }
+        public ICollection<Notifications> notifications { get; set; }
         public ProviderProfile providerProfile { get; set; }
     }
 }
