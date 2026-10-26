@@ -419,12 +419,17 @@ export default function LoginPage() {
             </div>
 
             {/* Google Button */}
-            <button
-              type="button"
-              className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 transition duration-200"
-            >
-              <span>🌐</span> {t.googleBtn}
-            </button>
+            <div className="relative w-full">
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
+              >
+                <span>🌐</span> {googleLoading ? 'Connecting...' : t.googleBtn}
+              </button>
+              <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
+            </div>
 
             {/* Register Link */}
             <p className="text-center text-xs text-gray-500 mt-6">
@@ -434,27 +439,6 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
-
-          {/* Google Button */}
-          <div className="relative w-full">
-            <button
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
-            >
-              <span>🌐</span> {googleLoading ? 'Connecting...' : 'Continue with Google'}
-            </button>
-            <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
-          </div>
-
-          {/* Register Link */}
-          <p className="text-center text-xs text-gray-500 mt-6">
-            Don't have an account?{' '}
-            <Link href="/register" className="text-teal-600 font-bold hover:underline">
-              Sign Up
-            </Link>
-          </p>
         </div>
       </div>
 
