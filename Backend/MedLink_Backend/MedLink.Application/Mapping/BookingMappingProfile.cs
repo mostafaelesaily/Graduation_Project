@@ -9,7 +9,7 @@ namespace MedLink.Application.Mapping
     {
         public BookingMappingProfile()
         {
-            CreateMap<Booking, BookingDto>();
+            CreateMap<Booking, GetBookingDto>();
             CreateMap<CreateBookingDto, Booking>();
             CreateMap<UpdateBookingDto, Booking>()
                 .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));

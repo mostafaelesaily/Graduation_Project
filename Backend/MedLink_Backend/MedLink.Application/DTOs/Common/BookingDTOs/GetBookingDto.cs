@@ -3,7 +3,7 @@ using System;
 
 namespace MedLink.Application.DTOs.Common.BookingDTOs
 {
-    public class BookingDto
+    public class GetBookingDto
     {
         public Guid Id { get; set; }
         public string UserId { get; set; } = string.Empty;

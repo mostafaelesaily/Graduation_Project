@@ -22,6 +22,13 @@ namespace MedLink.Application.Specifications.Bookings
         {
             AddOrderByDescending(b => b.CreatedAt);
         }
+
+        public BookingsByUserSpecification(string userId, int pageNumber, int pageSize)
+            : base(b => b.UserId == userId)
+        {
+            AddOrderByDescending(b => b.CreatedAt);
+            ApplyPaging((pageNumber - 1) * pageSize, pageSize);
+        }
     }
 
     public class BookingsByProviderSpecification : BaseSpecification<Booking>
@@ -30,6 +37,13 @@ namespace MedLink.Application.Specifications.Bookings
             : base(b => b.ProviderProfileId == providerProfileId)
         {
             AddOrderByDescending(b => b.CreatedAt);
+        }
+
+        public BookingsByProviderSpecification(Guid providerProfileId, int pageNumber, int pageSize)
+            : base(b => b.ProviderProfileId == providerProfileId)
+        {
+            AddOrderByDescending(b => b.CreatedAt);
+            ApplyPaging((pageNumber - 1) * pageSize, pageSize);
         }
     }
 
