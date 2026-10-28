@@ -1,4 +1,5 @@
 ﻿using MedLink.Domain.Entities.Common;
+using MedLink.Domain.Enums;
 using MedLink.Domain.Entities.Common.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ namespace MedLink.infrastructure.Data
         public DbSet<ProviderProfile> ProviderProfiles { get; set; }
         public DbSet<ProviderLocations> providerLocations { get; set; } 
         public DbSet<Notifications> notifications { get; set; }
+        public DbSet<Booking> Bookings { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -42,6 +44,23 @@ namespace MedLink.infrastructure.Data
             builder.Entity<Notifications>().Property(n => n.Title).IsRequired().HasMaxLength(200);
             builder.Entity<Notifications>().Property(n => n.Message).HasMaxLength(2000);
             // Configure Notification End.
+
+            // Configure Booking entity Start :
+            builder.Entity<Booking>(entity =>
+            {
+                entity.ToTable("Bookings");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.Status).IsRequired();
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.Property(e => e.Notes).HasMaxLength(1000);
+                entity.Property(e => e.RowVersion).IsRowVersion();
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => new { e.ProviderProfileId, e.BookingDate })
+                    .IsUnique()
+                    .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+            });
+            // Configure Booking entity End .
 
             // Configure ProviderProfile entity Start :
             builder.Entity<ProviderProfile>(entity =>
@@ -93,6 +112,20 @@ namespace MedLink.infrastructure.Data
                 .WithMany(u => u.notifications)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure one-to-many relationship between AppUser and Bookings
+            builder.Entity<Booking>()
+                .HasOne(b => b.User)
+                .WithMany(u => u.Bookings)
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between ProviderProfile and Bookings
+            builder.Entity<Booking>()
+                .HasOne(b => b.ProviderProfile)
+                .WithMany(p => p.Bookings)
+                .HasForeignKey(b => b.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
             // Relationship End .
 
 

@@ -18,6 +18,7 @@ namespace MedLink.Domain.Entities.Common
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public AppUser user { get; set; }
         public ICollection<ProviderLocations> ProviderLocations { get; set; } = new List<ProviderLocations>();
+        public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     }
 }
