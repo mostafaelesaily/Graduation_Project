@@ -53,7 +53,7 @@ namespace MedLink.Test.Services
             {
                 Id = Guid.NewGuid(),
                 userId = "user-1",
-                ProviderName = "Al-Noor Lab",
+                ServiceName = "Al-Noor Lab",
                 verificationStatus = status
             };
         }
@@ -77,7 +77,7 @@ namespace MedLink.Test.Services
             var providers = new List<ProviderProfile> { provider };
             var dtos = new List<GetProviderRequestDto>
             {
-                new GetProviderRequestDto { ProviderId = provider.Id, ProviderName = provider.ProviderName }
+                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = provider.ServiceName }
             };
             var storedFile = new StoredFile { Id = provider.LicenseFileId, FileName = "license.pdf", FilePath = "ProviderLicenses/license.pdf", FileType = "application/pdf" };
 

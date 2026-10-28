@@ -155,16 +155,16 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("float");
 
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PostalCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("ProviderProfileId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ServicePhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -185,13 +185,18 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<Guid>("LicenseFileId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ProviderName")
+                    b.Property<string>("NationalIdNumber")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("ProviderType")
                         .HasColumnType("int");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("TaxNumber")
                         .IsRequired()

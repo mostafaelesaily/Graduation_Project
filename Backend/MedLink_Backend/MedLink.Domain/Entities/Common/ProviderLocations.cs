@@ -13,7 +13,7 @@ namespace MedLink.Domain.Entities.Common
       public double? Latitude { get; set; }
       public double? Longitude { get; set; }
       public string PostalCode { get; set; }
-      public string PhoneNumber { get; set; }
+      public string ServicePhoneNumber { get; set; }
       public bool IsActive { get; set; } 
       public ProviderProfile ProviderProfile { get; set; }
     }

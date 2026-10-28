@@ -78,10 +78,12 @@ namespace MedLink.Test.Services
                 Email = "lab@medlink.com",
                 phoneNumber = "01012345678",
                 Password = "Test@1234",
-                ProviderName = "Al-Noor Lab",
+                NationalIdNumber = "12345678901234",
+                ServiceName = "Al-Noor Lab",
                 Address = "12 El-Geish St, Tanta",
                 postalCode = "31511",
                 taxNumber = "123456789",
+                ServicePhoneNumber = "0403123456",
                 ProviderType = ProviderType.Lab,
                 LicenseFile = fileMock.Object
             };

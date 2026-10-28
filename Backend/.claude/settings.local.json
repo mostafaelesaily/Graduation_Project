@@ -11,7 +11,8 @@
       "Bash(git -C \"D:\\\\All_Projects\\\\Graduation_Project\" log --merges --oneline -3 -- Frontend/medlink-frontend/app/register/page.jsx)",
       "Bash(git -C \"D:\\\\All_Projects\\\\Graduation_Project\" show 3bdfa37 -- Frontend/medlink-frontend/app/register/page.jsx)",
       "Bash(npx eslint:*)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(npx next:*)"
     ]
   }
 }

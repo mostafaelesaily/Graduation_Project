@@ -328,12 +328,16 @@ namespace MedLink.Application.Services.Common
                 throw new BadRequestException("Password is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.phoneNumber))
                 throw new BadRequestException("Phone number is required.");
-            if (string.IsNullOrWhiteSpace(providerRequest.ProviderName))
-                throw new BadRequestException("Provider name is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.NationalIdNumber))
+                throw new BadRequestException("National ID number is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.ServiceName))
+                throw new BadRequestException("Service name is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.Address))
                 throw new BadRequestException("Address is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.postalCode))
                 throw new BadRequestException("Postal code is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.ServicePhoneNumber))
+                throw new BadRequestException("Service phone number is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.taxNumber))
                 throw new BadRequestException("Tax number is required.");
 

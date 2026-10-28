@@ -48,7 +48,8 @@ namespace MedLink.infrastructure.Data
             {
                 entity.ToTable("ProviderProfiles"); 
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.ProviderName).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.NationalIdNumber).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.TaxNumber).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.CreatedAt).IsRequired();
             });
