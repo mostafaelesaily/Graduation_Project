@@ -102,10 +102,13 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Provider-only fields (step 1 extras)
-  const [address, setAddress] = useState('');
-  const [serviceType, setServiceType] = useState('');
+  const [nationalId, setNationalId] = useState('');
 
   // Provider-only fields (step 2)
+  const [serviceType, setServiceType] = useState('');
+  const [serviceName, setServiceName] = useState('');
+  const [address, setAddress] = useState('');
+  const [servicePhoneNumber, setServicePhoneNumber] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [taxNumber, setTaxNumber] = useState('');
   const [licenseFile, setLicenseFile] = useState(null);
@@ -148,8 +151,7 @@ export default function RegisterPage() {
     }
 
     if (role === 'Provider') {
-      if (!address.trim()) errors.address = 'Address is required.';
-      if (serviceType === '') errors.serviceType = 'Service type is required.';
+      if (!nationalId.trim()) errors.nationalId = 'National ID number is required.';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -221,6 +223,10 @@ export default function RegisterPage() {
     setErrorMessage('');
 
     const errors = {};
+    if (serviceType === '') errors.serviceType = 'Service type is required.';
+    if (!serviceName.trim()) errors.serviceName = 'Service name is required.';
+    if (!address.trim()) errors.address = 'Location is required.';
+    if (!servicePhoneNumber.trim()) errors.servicePhoneNumber = 'Service contact phone is required.';
     if (!postalCode.trim()) errors.postalCode = 'Postal code is required.';
     if (!taxNumber.trim()) errors.taxNumber = 'Tax number is required.';
     if (!licenseFile) errors.licenseFile = 'License document is required.';
@@ -241,8 +247,10 @@ export default function RegisterPage() {
       formData.append('Email', email);
       formData.append('phoneNumber', phoneNumber);
       formData.append('Password', password);
-      formData.append('ProviderName', fullName);
+      formData.append('NationalIdNumber', nationalId);
+      formData.append('ServiceName', serviceName);
       formData.append('Address', address);
+      formData.append('ServicePhoneNumber', servicePhoneNumber);
       formData.append('ProviderType', serviceType);
       formData.append('postalCode', postalCode);
       formData.append('taxNumber', taxNumber);
@@ -420,7 +428,29 @@ export default function RegisterPage() {
   // Provider - Step 2: Verification Details
   if (role === 'Provider' && providerStep === 2) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-sky-50/50 p-4 font-sans">
+      <div className="min-h-screen flex flex-col bg-white font-sans">
+
+        {/* --- Navbar العلوي بلون خلفية #F7F7F7 (يوجّه إلى /landing) --- */}
+        <header className="w-full py-4 px-8 border-b border-gray-100 flex justify-between items-center sticky top-0 z-50" style={{ backgroundColor: '#F7F7F7' }}>
+          <div className="flex items-center gap-4">
+            <Link href="/landing" className="flex items-center">
+              <img
+                src="/WhatsApp Image .jpeg"
+                alt="MedLink Logo"
+                className="h-10 w-auto object-contain cursor-pointer"
+              />
+            </Link>
+            <Link
+              href="/landing"
+              className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
+            >
+              {t.backHome}
+            </Link>
+          </div>
+        </header>
+
+        {/* --- محتوى الصفحة الرئيسي --- */}
+        <div className="flex-grow flex items-center justify-center bg-sky-50/50 p-4 py-8">
         <div className="max-w-6xl w-full bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row">
 
           {/* Left Side - Stepper */}
@@ -482,6 +512,89 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleProviderVerificationSubmit} className="space-y-4" noValidate autoComplete="off">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Type *</label>
+                  <select
+                    value={serviceType}
+                    onChange={(e) => {
+                      setServiceType(e.target.value);
+                      if (fieldErrors.serviceType) setFieldErrors({ ...fieldErrors, serviceType: '' });
+                    }}
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.serviceType ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  >
+                    <option value="">Select service type</option>
+                    {PROVIDER_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.serviceType && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceType}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Name *</label>
+                  <input
+                    type="text"
+                    value={serviceName}
+                    onChange={(e) => {
+                      setServiceName(e.target.value);
+                      if (fieldErrors.serviceName) setFieldErrors({ ...fieldErrors, serviceName: '' });
+                    }}
+                    placeholder="e.g. Al Nour Medical Center"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.serviceName ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.serviceName && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceName}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Location *</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
+                    }}
+                    placeholder="e.g. Cairo"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.address ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.address && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.address}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Contact Phone *</label>
+                  <input
+                    type="tel"
+                    value={servicePhoneNumber}
+                    onChange={(e) => {
+                      setServicePhoneNumber(e.target.value);
+                      if (fieldErrors.servicePhoneNumber) setFieldErrors({ ...fieldErrors, servicePhoneNumber: '' });
+                    }}
+                    placeholder="+20 2 1234 5678"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.servicePhoneNumber ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.servicePhoneNumber && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.servicePhoneNumber}</p>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1.5">Postal Code *</label>
@@ -573,6 +686,58 @@ export default function RegisterPage() {
             </form>
           </div>
         </div>
+        </div>
+
+        {/* --- Footer السفلي الاحترافي والمتعدد الأعمدة --- */}
+        <footer className="w-full border-t border-gray-100 bg-white py-10 px-8 mt-auto">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+
+            <div className="md:col-span-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <img
+                  src="/WhatsApp Image .jpeg"
+                  alt="MedLink Logo"
+                  className="h-7 w-auto object-contain"
+                />
+              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                AI-powered healthcare platform connecting patients with top providers and keeping health history seamlessly organized.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Quick Links</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/landing" className="hover:text-teal-600 transition">Home</Link></li>
+                <li><Link href="/login" className="hover:text-teal-600 transition">Log In</Link></li>
+                <li><Link href="/register" className="hover:text-teal-600 transition">Sign Up</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Support</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/help" className="hover:text-teal-600 transition">Help Center</Link></li>
+                <li><Link href="/contact" className="hover:text-teal-600 transition">Contact Support</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Legal</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/privacy" className="hover:text-teal-600 transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-teal-600 transition">Terms of Service</Link></li>
+              </ul>
+            </div>
+
+          </div>
+
+          <div className="max-w-6xl mx-auto pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+            <p>© 2026 <span className="font-bold text-sky-900">MedLink</span>. All rights reserved.</p>
+            <p className="text-[11px]">Better access. Healthier tomorrows.</p>
+          </div>
+        </footer>
+
       </div>
     );
   }
@@ -716,51 +881,6 @@ export default function RegisterPage() {
 
             <form onSubmit={handleRegister} className="space-y-4" noValidate autoComplete="off">
 
-              {role === 'Provider' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Type *</label>
-                    <select
-                      value={serviceType}
-                      onChange={(e) => {
-                        setServiceType(e.target.value);
-                        if (fieldErrors.serviceType) setFieldErrors({ ...fieldErrors, serviceType: '' });
-                      }}
-                      className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
-                        fieldErrors.serviceType ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
-                      }`}
-                    >
-                      <option value="">Select service type</option>
-                      {PROVIDER_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                      ))}
-                    </select>
-                    {fieldErrors.serviceType && (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceType}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-800 mb-1.5">Address *</label>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => {
-                        setAddress(e.target.value);
-                        if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
-                      }}
-                      placeholder="e.g. Cairo"
-                      className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
-                        fieldErrors.address ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
-                      }`}
-                    />
-                    {fieldErrors.address && (
-                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.address}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-800 mb-1.5">{t.fullName}</label>
@@ -782,6 +902,27 @@ export default function RegisterPage() {
                   <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.fullName}</p>
                 )}
               </div>
+
+              {role === 'Provider' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">National ID Number *</label>
+                  <input
+                    type="text"
+                    value={nationalId}
+                    onChange={(e) => {
+                      setNationalId(e.target.value);
+                      if (fieldErrors.nationalId) setFieldErrors({ ...fieldErrors, nationalId: '' });
+                    }}
+                    placeholder="14-digit national ID"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.nationalId ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.nationalId && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.nationalId}</p>
+                  )}
+                </div>
+              )}
 
               {/* Email Address */}
               <div>
@@ -915,7 +1056,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="w-full py-3.5 bg-sky-900 hover:bg-sky-950 text-white rounded-xl text-xs font-bold transition duration-200 shadow-md shadow-sky-900/10 mt-2"
               >
-                {loading ? t.signingUp : t.signUpBtn}
+                {role === 'Provider' ? 'Continue' : (loading ? t.signingUp : t.signUpBtn)}
               </button>
             </form>
 

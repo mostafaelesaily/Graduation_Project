@@ -10,7 +10,8 @@ namespace MedLink.Domain.Entities.Common
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public string userId { get; set; }
-        public string ProviderName { get; set; }
+        public string ServiceName { get; set; }
+        public string NationalIdNumber { get; set; }
         public ProviderType ProviderType { get; set; }
         public string TaxNumber { get; set; }
         public Guid LicenseFileId { get; set; }
