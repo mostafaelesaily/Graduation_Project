@@ -20,5 +20,7 @@ namespace MedLink.Domain.Entities.Common
         public AppUser user { get; set; }
         public ICollection<ProviderLocations> ProviderLocations { get; set; } = new List<ProviderLocations>();
         public ICollection<StoredFile> StoredFiles { get; set; } = new List<StoredFile>();
+        public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+
     }
 }

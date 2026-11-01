@@ -23,6 +23,49 @@ namespace MedLink.infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("BookingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ProviderProfileId", "BookingDate")
+                        .IsUnique()
+                        .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+
+                    b.ToTable("Bookings", "Shared");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Identity.AppUser", b =>
                 {
                     b.Property<string>("Id")
@@ -380,6 +423,25 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", "Shared");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Booking", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
+                        .WithMany("Bookings")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "User")
+                        .WithMany("Bookings")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Identity.AppUser", b =>
                 {
                     b.OwnsMany("MedLink.Domain.Entities.Common.RefreshTokens", "RefreshTokens", b1 =>
@@ -503,6 +565,8 @@ namespace MedLink.infrastructure.Migrations
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Identity.AppUser", b =>
                 {
+                    b.Navigation("Bookings");
+
                     b.Navigation("notifications");
 
                     b.Navigation("providerProfile")
@@ -511,6 +575,8 @@ namespace MedLink.infrastructure.Migrations
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderProfile", b =>
                 {
+                    b.Navigation("Bookings");
+
                     b.Navigation("ProviderLocations");
                 });
 #pragma warning restore 612, 618
