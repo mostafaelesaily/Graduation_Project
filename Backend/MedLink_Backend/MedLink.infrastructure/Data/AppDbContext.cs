@@ -88,6 +88,12 @@ namespace MedLink.infrastructure.Data
                 .WithMany(p => p.ProviderLocations)
                 .HasForeignKey(pl => pl.ProviderProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
+            // Configure one-to-many relationship between ProviderProfile and StoredFile
+            builder.Entity<StoredFile>()
+                .HasOne(sf => sf.ProviderProfile)
+                .WithMany(p => p.StoredFiles)
+                .HasForeignKey(sf => sf.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
             // Configure one-to-many relationship between AppUser and Notifications
             builder.Entity<Notifications>()
                 .HasOne(n => n.User)

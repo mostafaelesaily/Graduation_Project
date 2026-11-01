@@ -11,6 +11,7 @@ namespace MedLink.Domain.Entities.Common
         public string FilePath { get; set; }
         public string FileType { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        public Guid ProviderProfileId { get; set; }
+        public ProviderProfile ProviderProfile { get; set; }
     }
 }
