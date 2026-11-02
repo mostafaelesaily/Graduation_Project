@@ -32,23 +32,11 @@ function BellIcon({ className = 'h-5 w-5' }) {
   );
 }
 
-function SendIcon({ className = 'h-4 w-4' }) {
+function SparkleIcon({ className = 'h-3 w-3' }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M22 2L11 13" />
-      <path d="M22 2l-7 20-4-9-9-4 20-7z" />
-    </svg>
-  );
-}
-
-function RobotIcon({ className = 'h-5 w-5' }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="8" width="16" height="12" rx="3" />
-      <path d="M12 4v4" />
-      <circle cx="12" cy="3" r="1" fill="currentColor" stroke="none" />
-      <path d="M9.5 13v1.5M14.5 13v1.5" />
-      <path d="M1.5 12v3M22.5 12v3" />
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.5l1.8 5.2 5.2 1.8-5.2 1.8L12 16.5l-1.8-5.2L5 9.5l5.2-1.8L12 2.5z" />
+      <path d="M18.5 15l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9.9-2.6z" />
     </svg>
   );
 }
@@ -155,15 +143,44 @@ const doctors = [
   { name: 'Dr. Nour Ali', specialty: 'Cardiologist', rating: '4.7', reviews: 80, distance: '5.3 km', price: 950, initials: 'NA', gradient: 'from-teal-400 to-emerald-600' },
 ];
 
+const searchCopy = {
+  en: {
+    greeting: { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening' },
+    subtitle: 'How can we help you today?',
+    searchPlaceholder: 'Search doctors, services, or symptoms, or ask AI Health Assistant...',
+    aiPlaceholder: 'Ask the AI Health Assistant about your symptoms...',
+    searchLabel: 'Search doctors, services, or symptoms',
+    searchShort: 'Search...',
+    toggleAi: 'Toggle AI',
+    search: 'Search',
+    searchStatus: (term) => `Searching for “${term}”...`,
+    aiStatus: (term) => `Asking the AI Health Assistant about “${term}”...`,
+  },
+  ar: {
+    greeting: { morning: 'صباح الخير', afternoon: 'مساء الخير', evening: 'مساء الخير' },
+    subtitle: 'كيف يمكننا مساعدتك اليوم؟',
+    searchPlaceholder: 'ابحث عن الأطباء أو الخدمات أو الأعراض، أو اسأل المساعد الصحي الذكي...',
+    aiPlaceholder: 'اسأل المساعد الصحي الذكي عن الأعراض التي تشعر بها...',
+    searchLabel: 'البحث عن الأطباء أو الخدمات أو الأعراض',
+    searchShort: 'بحث...',
+    toggleAi: 'تفعيل الذكاء الاصطناعي',
+    search: 'بحث',
+    searchStatus: (term) => `جارٍ البحث عن «${term}»...`,
+    aiStatus: (term) => `جارٍ سؤال المساعد الصحي الذكي عن «${term}»...`,
+  },
+};
+
 /* ---------- Page ---------- */
 
 export default function Home() {
-  const [greeting, setGreeting] = useState('Good morning');
+  const [period, setPeriod] = useState('morning');
   const [userName, setUserName] = useState('Mona');
+  const [lang, setLang] = useState('en');
   const [searchTerm, setSearchTerm] = useState('');
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiInput, setAiInput] = useState('');
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [submittedSearch, setSubmittedSearch] = useState(null);
 
+  const t = searchCopy[lang];
   const router = useRouter();
 
   useEffect(() => {
@@ -172,20 +189,39 @@ export default function Home() {
       return;
     }
     const hour = new Date().getHours();
-    setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
+    setPeriod(hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening');
     const savedName = localStorage.getItem('userName');
     if (savedName) setUserName(savedName);
   }, []);
 
+  useEffect(() => {
+    const syncLanguage = () => {
+      setLang(document.documentElement.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'en');
+    };
+
+    syncLanguage();
+    const observer = new MutationObserver(syncLanguage);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const handleSearch = (e) => {
     e.preventDefault();
+    const term = searchTerm.trim();
+    setSubmittedSearch(term ? { term, ai: aiEnabled } : null);
   };
 
-  const handleAiSend = (e) => {
+  const toggleAi = () => {
+    setAiEnabled((enabled) => !enabled);
+    setSubmittedSearch(null);
+  };
+
+  const handleNavSearch = (e) => {
     e.preventDefault();
-    if (!aiInput.trim()) return;
-    setAiMessage(aiInput.trim());
-    setAiInput('');
+    const term = searchTerm.trim();
+    setSubmittedSearch(term ? { term, ai: aiEnabled } : null);
+    document.getElementById('home-search')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   return (
@@ -211,16 +247,23 @@ export default function Home() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm lg:flex">
-              <SearchIcon className="h-3.5 w-3.5 text-slate-400" />
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:gap-4">
+            <form
+              onSubmit={handleNavSearch}
+              role="search"
+              className="hidden min-w-0 max-w-[200px] flex-1 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 shadow-sm focus-within:border-blue-300 sm:flex lg:max-w-[280px]"
+            >
+              <SearchIcon className="h-4 w-4 shrink-0 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search..."
-                className="w-36 bg-transparent text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={t.searchShort}
+                aria-label={t.searchLabel}
+                className="min-w-0 flex-1 bg-transparent text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none sm:text-sm"
               />
-            </div>
-            <button type="button" className="relative text-slate-500 transition hover:text-blue-600">
+            </form>
+            <button type="button" className="relative shrink-0 text-slate-500 transition hover:text-blue-600">
               <BellIcon />
               <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
             </button>
@@ -231,72 +274,72 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        {/* ---------- Greeting + Search + AI Assistant ---------- */}
-        <section className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="flex-1">
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-              {greeting}, {userName} <span className="align-middle">👋</span>
+      <main>
+        {/* ---------- Greeting + Search ---------- */}
+        <section className="bg-[radial-gradient(125%_145%_at_88%_-10%,#c7dfff_0%,#dcecff_32%,#edf5ff_62%,#ffffff_100%)]">
+          <div className="mx-auto max-w-6xl px-6 pt-9 pb-10 text-start">
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#0b2545] sm:text-[2.6rem] sm:leading-tight">
+              {t.greeting[period]}, {userName} <span className="align-middle">👋</span>
             </h1>
-            <p className="mt-1.5 text-sm text-slate-500">How can we help you today?</p>
+            <p className="mt-2 text-lg text-[#173a63] sm:text-[1.35rem]">{t.subtitle}</p>
 
-            <form onSubmit={handleSearch} className="mt-5 flex max-w-xl items-center gap-2 rounded-full border border-slate-200 bg-white p-1.5 pl-5 shadow-sm focus-within:border-blue-300">
-              <SearchIcon className="h-4 w-4 shrink-0 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search doctors, services, or symptoms..."
-                className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none"
-              />
-              <button
-                type="submit"
-                aria-label="Search"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-md shadow-blue-500/30 transition hover:bg-blue-700"
-              >
-                <SearchIcon className="h-4 w-4" />
-              </button>
-            </form>
-          </div>
-
-          {/* AI Health Assistant */}
-          <div className="w-full shrink-0 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-100 p-5 lg:w-[360px]">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/30">
-                <RobotIcon />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-slate-900">
-                  AI Health Assistant <span className="text-xs">✨</span>
-                </p>
-                <p className="text-[11px] text-slate-500">Describe your symptoms or ask a question.</p>
+            <form
+              id="home-search"
+              onSubmit={handleSearch}
+              role="search"
+              className="mt-7 flex w-full scroll-mt-24 flex-col gap-2 rounded-[28px] border border-white/70 bg-white/95 p-2 shadow-[0_10px_35px_-12px_rgba(37,99,235,0.45)] backdrop-blur transition focus-within:border-blue-200 focus-within:shadow-[0_14px_40px_-12px_rgba(37,99,235,0.55)] sm:flex-row sm:items-center sm:gap-3 sm:rounded-full sm:py-2 sm:ps-6 sm:pe-2"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1 sm:px-0 sm:py-0">
+                <SearchIcon className="h-[18px] w-[18px] shrink-0 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={aiEnabled ? t.aiPlaceholder : t.searchPlaceholder}
+                  aria-label={t.searchLabel}
+                  className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none sm:text-[15px]"
+                />
               </div>
-            </div>
 
-            <form onSubmit={handleAiSend} className="mt-4 flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 shadow-sm">
-              <input
-                type="text"
-                value={aiInput}
-                onChange={(e) => setAiInput(e.target.value)}
-                placeholder="Type your message..."
-                className="min-w-0 flex-1 bg-transparent text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
-              />
-              <button
-                type="submit"
-                aria-label="Send message"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700"
-              >
-                <SendIcon className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2 sm:justify-end sm:border-0 sm:pt-0">
+                <button
+                  type="button"
+                  onClick={toggleAi}
+                  aria-pressed={aiEnabled}
+                  aria-label={t.toggleAi}
+                  title={t.toggleAi}
+                  className={`flex h-11 shrink-0 items-center gap-2.5 rounded-full px-3 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    aiEnabled
+                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                      : 'text-slate-800 shadow-sm ring-1 ring-slate-200/70 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-white to-sky-100 shadow-sm ring-1 ring-blue-200">
+                    <span className="text-[11px] font-extrabold tracking-tight text-blue-600">AI</span>
+                    <SparkleIcon className="absolute -end-1 -top-1 h-3 w-3 text-sky-500" />
+                  </span>
+                  <span aria-hidden="true" className="h-7 w-px bg-slate-200" />
+                  <span className="whitespace-nowrap">{t.toggleAi}</span>
+                </button>
+
+                <button
+                  type="submit"
+                  className="h-11 shrink-0 rounded-full bg-[#1f6bff] px-7 text-[15px] font-semibold text-white shadow-[0_8px_20px_-6px_rgba(37,99,235,0.65)] transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  {t.search}
+                </button>
+              </div>
             </form>
-            {aiMessage && (
-              <p className="mt-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600 px-3.5 py-2 text-xs text-white shadow-sm">
-                {aiMessage}
+
+            {submittedSearch && (
+              <p role="status" aria-live="polite" className="mt-2 px-4 text-xs text-[#31527a]">
+                {submittedSearch.ai ? t.aiStatus(submittedSearch.term) : t.searchStatus(submittedSearch.term)}
               </p>
             )}
           </div>
         </section>
 
+        <div className="mx-auto max-w-6xl px-6 pb-8">
         {/* ---------- Our Services ---------- */}
         <section id="services" className="mt-10">
           <div className="flex items-center justify-between">
@@ -401,6 +444,7 @@ export default function Home() {
 
         {/* Placeholder anchor for the Records nav item */}
         <span id="records" className="block h-0 scroll-mt-24" />
+        </div>
       </main>
     </div>
   );
