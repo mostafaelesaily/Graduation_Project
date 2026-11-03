@@ -9,8 +9,8 @@ import 'package:medlink/Core/Shared/input_field.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
 import 'package:medlink/Core/Style/text_styles.dart';
 import 'package:medlink/Core/Widgets/auth_scaffold.dart';
-import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_cubit.dart';
-import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_state.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/Cubit/login_cubit.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/Cubit/login_state.dart';
 
 class LoginScreen extends StatefulWidget {
   new({super.key});
@@ -137,7 +137,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             BlocConsumer<LoginCubit, LoginState>(
               listener: (context, state) {
-                if (state.status == LoginStatus.success) {}
+                if (state.status == LoginStatus.success) {
+                  context.goNamed('home');
+                }
 
                 if (state.status == LoginStatus.failure) {
                   showDialog(

@@ -8,7 +8,7 @@ import 'package:medlink/Core/Style/colors_manager.dart';
 
 import 'package:medlink/Features/Auth/Domain/Repos/auth_repository.dart';
 import 'package:medlink/Features/Auth/Presentation/Login/View/login_screen.dart';
-import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_cubit.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/Cubit/login_cubit.dart';
 import 'package:medlink/Features/Auth/Presentation/Signup/Cubit/signup_cubit.dart';
 import 'package:medlink/Features/Auth/Presentation/Signup/View/signup_screen.dart';
 
