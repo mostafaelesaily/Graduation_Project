@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:medlink/Features/Auth/Domain/Repos/auth_repository.dart';
-import 'package:medlink/Features/Auth/Presentation/Login/cubit/login_state.dart';
+import 'package:medlink/Features/Auth/Presentation/Login/Cubit/login_state.dart';
 
 class LoginCubit extends Cubit<LoginState> {
   final AuthRepository authRepository;

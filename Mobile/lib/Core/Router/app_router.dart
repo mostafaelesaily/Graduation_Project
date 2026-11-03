@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:medlink/Features/Auth/Presentation/Login/View/login_screen.dart';
 import 'package:medlink/Features/Auth/Presentation/Signup/View/signup_screen.dart';
+import 'package:medlink/Features/Home/Presentation/View/home_screen.dart';
 import 'package:medlink/Features/Onboarding/Presentation/View/onboarding_screen.dart';
 
 class AppRouter {
@@ -21,6 +22,11 @@ class AppRouter {
         path: '/signup',
         name: 'signup',
         builder: (context, state) => SignUpScreen(),
+      ),
+      GoRoute(
+        path: '/home',
+        name: 'home',
+        builder: (context, state) => const HomeScreen(),
       ),
     ],
   );
