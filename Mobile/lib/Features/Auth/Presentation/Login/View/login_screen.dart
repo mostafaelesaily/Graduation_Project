@@ -154,17 +154,18 @@ class _LoginScreenState extends State<LoginScreen> {
               },
               builder: (context, state) {
                 return AuthButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      context.read<LoginCubit>().login(
-                        email: _emailController.text,
-                        password: _passwordController.text,
-                      );
-                      _emailController.clear();
-                      _passwordController.clear();
-                      _formKey.currentState!.reset();
-                    }
-                  },
+                  // onPressed: () {
+                  //   if (_formKey.currentState!.validate()) {
+                  //     context.read<LoginCubit>().login(
+                  //       email: _emailController.text,
+                  //       password: _passwordController.text,
+                  //     );
+                  //     _emailController.clear();
+                  //     _passwordController.clear();
+                  //     _formKey.currentState!.reset();
+                  //   }
+                  // },
+                  onPressed: () => context.pushNamed('home'),
                   text: state.status == LoginStatus.loading ? null : 'Log in',
                   icon: state.status == LoginStatus.loading
                       ? CircularProgressIndicator()

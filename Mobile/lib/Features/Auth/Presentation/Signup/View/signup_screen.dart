@@ -31,7 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _serviceTypeContorller = TextEditingController();
-  final _locationContorller = TextEditingController();
+  final _idNumberController = TextEditingController();
 
   AccountRole _selectedRole = AccountRole.patient;
   bool _isPasswordVisible = false;
@@ -45,7 +45,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _serviceTypeContorller.dispose();
-    _locationContorller.dispose();
+    _idNumberController.dispose();
     super.dispose();
   }
 
@@ -95,20 +95,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _signUp() {
     if (!_formKey.currentState!.validate()) return;
 
-    context.read<SignupCubit>().signup(
-      RegisterRequestModel(
+    if (_selectedRole == AccountRole.patient) {
+      final model = RegisterRequestModel(
         accountRole: _selectedRole.name,
-        serviceType: _serviceTypeContorller.text,
-        location: _locationContorller.text,
         name: _nameController.text,
         email: _emailController.text,
         phone: _phoneController.text,
         password: _passwordController.text,
-      ),
-    );
+      );
+      context.read<SignupCubit>().signup(model);
+    }
+
+    if (_selectedRole == AccountRole.provider) {
+      final model = RegisterRequestModel(
+        accountRole: _selectedRole.name,
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text.trim(),
+        nationalIdNumber: _idNumberController.text.trim(),
+      );
+      context.pushNamed('signupProvider', extra: model);
+    }
 
     _serviceTypeContorller.clear();
-    _locationContorller.clear();
+    _idNumberController.clear();
     _nameController.clear();
     _emailController.clear();
     _phoneController.clear();
@@ -164,25 +175,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
             SizedBox(height: 4.h),
 
-            if (_selectedRole == AccountRole.provider) ...[
-              InputField(
-                controller: _serviceTypeContorller,
-                validator: (value) => _requiredValidator(value, 'Service Type'),
-                isRequired: true,
-                labelText: 'Service Type',
-                hintText: 'e.g. Internal Medicine',
-                icon: Icons.medical_services_outlined,
-              ),
-              InputField(
-                controller: _locationContorller,
-                validator: (value) => _requiredValidator(value, 'Location'),
-                isRequired: true,
-                labelText: 'Location',
-                hintText: 'e.g. Cairo',
-                icon: Icons.location_on_outlined,
-              ),
-            ],
-
             InputField(
               controller: _nameController,
               validator: (value) => _requiredValidator(value, 'Full name'),
@@ -191,6 +183,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
               hintText: 'Enter your full name',
               icon: Icons.person_outline,
             ),
+
+            if (_selectedRole == AccountRole.provider) ...[
+              InputField(
+                controller: _idNumberController,
+                validator: (value) =>
+                    _requiredValidator(value, 'National ID Number'),
+                isRequired: true,
+                labelText: 'National ID Number',
+                hintText: '14-digit national ID',
+                icon: Icons.credit_card_outlined,
+              ),
+            ],
 
             InputField(
               controller: _emailController,

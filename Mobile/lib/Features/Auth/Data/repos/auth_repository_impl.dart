@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:medlink/Core/Network/token_storage.dart';
 import 'package:medlink/Features/Auth/Data/datasources/auth_remote_data_source.dart';
 import 'package:medlink/Features/Auth/Data/models/register_request_model.dart';
@@ -34,6 +35,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String> register(RegisterRequestModel model) async {
     return await remoteDataSource.register(model);
+  }
+
+  @override
+  Future<String> providerRegister(
+    RegisterRequestModel model,
+    PlatformFile file,
+  ) async {
+    return await remoteDataSource.providerRegister(model, file);
   }
 
   @override
