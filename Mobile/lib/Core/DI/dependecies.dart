@@ -15,7 +15,7 @@ class Dependencies {
 
     apiClient = ApiClient(
       tokenStorage: tokenStorage,
-      baseUrl: 'http://192.168.1.4:7048',
+      baseUrl: 'http://192.168.1.5:7048',
     );
 
     authRemoteDataSource = AuthRemoteDataSource(client: apiClient);

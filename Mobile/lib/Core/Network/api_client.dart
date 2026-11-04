@@ -229,4 +229,55 @@ class ApiClient {
       requiresAuth: requiresAuth,
     );
   }
+
+  Future<Response> multipartRequest(
+    String path, {
+    required Map<String, String> fields,
+    required List<MultipartFile> Function() files,
+    Map<String, String>? queryParameters,
+    Map<String, String>? headers,
+    bool requiresAuth = true,
+    bool retryAfterRefresh = true,
+  }) async {
+    final uri = _buildUri(path, queryParameters);
+
+    final request = MultipartRequest('POST', uri);
+
+    request.headers.addAll({'Accept': 'application/json', ...?headers});
+
+    if (requiresAuth) {
+      final token = await tokenStorage.getAccessToken();
+
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    request.fields.addAll(fields);
+    request.files.addAll(files());
+
+    final streamedResponse = await _client.send(request);
+    final response = await Response.fromStream(streamedResponse);
+
+    if (response.statusCode != 401 || !requiresAuth || !retryAfterRefresh) {
+      return response;
+    }
+
+    final refreshed = await _refreshOnce(request.headers['Authorization']);
+
+    if (!refreshed) {
+      await tokenStorage.clearTokens();
+      return response;
+    }
+
+    return multipartRequest(
+      path,
+      fields: fields,
+      files: files,
+      queryParameters: queryParameters,
+      headers: headers,
+      requiresAuth: requiresAuth,
+      retryAfterRefresh: false,
+    );
+  }
 }
