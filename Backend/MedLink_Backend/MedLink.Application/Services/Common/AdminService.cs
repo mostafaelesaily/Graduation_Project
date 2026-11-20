@@ -5,6 +5,7 @@ using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.ProviderProfiles;
 using MedLink.Domain.Entities.Common;
+using System.Linq;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -34,7 +35,7 @@ namespace MedLink.Application.Services.Common
         private readonly ILogger<AdminService> logger;
         private readonly IMapper mapper;
         public async Task<PaginatedResultDto<GetProviderRequestDto>>
-    GetAllProviderRequest(int pageNum, int pageSize)
+    GetAllProviderRequest(int pageNum, int pageSize, string? search = null, VerificationStatus? status = null)
         {
             if (pageNum < 1 || pageSize < 1)
                 throw new ArgumentException(
@@ -42,17 +43,19 @@ namespace MedLink.Application.Services.Common
 
             logger.LogInformation(
                 "Attempting to get provider requests. Page: {PageNum}, " +
-                "PageSize: {PageSize}, Status: Pending or Rejected",
+                "PageSize: {PageSize}, Search: {Search}, Status: {Status}",
                 pageNum,
-                pageSize);
+                pageSize,
+                search,
+                status);
 
             var cacheKey =
-                $"Get_ProviderRequest_pageNum:{pageNum}_pageSize:{pageSize}";
+                $"Get_ProviderRequest_pageNum:{pageNum}_pageSize:{pageSize}_search:{search}_status:{status}";
 
             var result = await cacheService.GetOrSetAsync(cacheKey, async () =>
             {
                 var specification =
-                    new ProviderStatusSpecification(pageNum, pageSize);
+                    new ProviderStatusSpecification(pageNum, pageSize, search, status);
 
                 var providers = await unitOfWork
                     .Repository<ProviderProfile>()
@@ -79,6 +82,13 @@ namespace MedLink.Application.Services.Common
             });
 
             return result;
+        }
+
+        public async Task<IReadOnlyList<GetProviderDocumentDto>> GetProviderDocumentsAsync(Guid providerId)
+        {
+            var files = await unitOfWork.Repository<StoredFile>().GetAllAsync();
+            return mapper.Map<IReadOnlyList<GetProviderDocumentDto>>(
+                files.Where(f => f.ProviderProfileId == providerId).ToList());
         }
         public async Task AcceptProviderAsync(Guid providerId)
         {

@@ -10,6 +10,7 @@ namespace MedLink.Domain.Entities.Common
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public string userId { get; set; }
+        public string FullName { get; set; } = string.Empty;
         public string ServiceName { get; set; }
         public string NationalIdNumber { get; set; }
         public ProviderType ProviderType { get; set; }
@@ -21,6 +22,9 @@ namespace MedLink.Domain.Entities.Common
         public ICollection<ProviderLocations> ProviderLocations { get; set; } = new List<ProviderLocations>();
         public ICollection<StoredFile> StoredFiles { get; set; } = new List<StoredFile>();
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+        public ICollection<ProviderService> ProviderServices { get; set; } = new List<ProviderService>();
+        public ICollection<MedicalRecord> MedicalRecords { get; set; } = new List<MedicalRecord>();
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     }
 }

@@ -19,6 +19,9 @@ namespace MedLink.infrastructure.Data
         public DbSet<ProviderLocations> providerLocations { get; set; } 
         public DbSet<Notifications> notifications { get; set; }
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<MedicalRecord> MedicalRecords { get; set; }
+        public DbSet<ProviderService> ProviderServices { get; set; }
+        public DbSet<Review> Reviews { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -62,11 +65,55 @@ namespace MedLink.infrastructure.Data
             });
             // Configure Booking entity End .
 
+            // Configure MedicalRecord entity Start :
+            builder.Entity<MedicalRecord>(entity =>
+            {
+                entity.ToTable("MedicalRecords");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.RecordDate).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.Diagnosis).HasMaxLength(2000);
+                entity.Property(e => e.Notes).HasMaxLength(2000);
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.HasIndex(e => e.PatientId);
+                entity.HasIndex(e => e.ProviderProfileId);
+            });
+            // Configure MedicalRecord entity End .
+
+            // Configure ProviderService entity Start :
+            builder.Entity<ProviderService>(entity =>
+            {
+                entity.ToTable("ProviderServices");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).HasMaxLength(2000);
+                entity.Property(e => e.Price).HasColumnType("decimal(18,2)").IsRequired();
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.HasIndex(e => e.ProviderProfileId);
+            });
+            // Configure ProviderService entity End .
+
+            // Configure Review entity Start :
+            builder.Entity<Review>(entity =>
+            {
+                entity.ToTable("Reviews");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Rating).IsRequired();
+                entity.Property(e => e.Comment).HasMaxLength(2000);
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.HasIndex(e => e.PatientId);
+                entity.HasIndex(e => e.ProviderProfileId);
+            });
+            // Configure Review entity End .
+
             // Configure ProviderProfile entity Start :
             builder.Entity<ProviderProfile>(entity =>
             {
                 entity.ToTable("ProviderProfiles"); 
                 entity.HasKey(e => e.Id);
+                entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.NationalIdNumber).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.TaxNumber).IsRequired().HasMaxLength(100);
@@ -90,6 +137,7 @@ namespace MedLink.infrastructure.Data
             builder.Entity<AppUser>(entity =>
             {
                 entity.ToTable("AppUsers");
+                entity.Property(x => x.FullName).IsRequired().HasMaxLength(100);
                 entity.Property(x => x.IsActice).HasDefaultValue(false);
             });
             // Configure AppUser entity End .
@@ -132,6 +180,41 @@ namespace MedLink.infrastructure.Data
                 .HasOne(b => b.ProviderProfile)
                 .WithMany(p => p.Bookings)
                 .HasForeignKey(b => b.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between AppUser and MedicalRecords
+            builder.Entity<MedicalRecord>()
+                .HasOne(m => m.Patient)
+                .WithMany(u => u.MedicalRecords)
+                .HasForeignKey(m => m.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between ProviderProfile and MedicalRecords
+            builder.Entity<MedicalRecord>()
+                .HasOne(m => m.ProviderProfile)
+                .WithMany(p => p.MedicalRecords)
+                .HasForeignKey(m => m.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between ProviderProfile and ProviderServices
+            builder.Entity<ProviderService>()
+                .HasOne(s => s.ProviderProfile)
+                .WithMany(p => p.ProviderServices)
+                .HasForeignKey(s => s.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure one-to-many relationship between AppUser and Reviews
+            builder.Entity<Review>()
+                .HasOne(r => r.Patient)
+                .WithMany(u => u.Reviews)
+                .HasForeignKey(r => r.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between ProviderProfile and Reviews
+            builder.Entity<Review>()
+                .HasOne(r => r.ProviderProfile)
+                .WithMany(p => p.Reviews)
+                .HasForeignKey(r => r.ProviderProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
             // Relationship End .
 
