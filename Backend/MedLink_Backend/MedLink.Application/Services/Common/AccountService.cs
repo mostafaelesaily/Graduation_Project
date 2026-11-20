@@ -268,19 +268,21 @@ namespace MedLink.Application.Services.Common
                     throw new BadRequestException("Failed to assign provider role. Errors: " + errors);
                 }
 
+                var providerProfile = mapper.Map<ProviderProfile>(providerRequest);
+                providerProfile.userId = user.Id;
+                await unitOfWork.Repository<ProviderProfile>().AddAsync(providerProfile);
+
                 var licenseFilePath = await fileService.UploadFileAsync(providerRequest.LicenseFile, "ProviderLicenses");
                 var storedFile = new StoredFile
                 {
                     FileName = providerRequest.LicenseFile.FileName,
                     FilePath = licenseFilePath,
-                    FileType = providerRequest.LicenseFile.ContentType
+                    FileType = providerRequest.LicenseFile.ContentType,
+                    ProviderProfileId = providerProfile.Id
                 };
                 await unitOfWork.Repository<StoredFile>().AddAsync(storedFile);
 
-                var providerProfile = mapper.Map<ProviderProfile>(providerRequest);
-                providerProfile.userId = user.Id;
                 providerProfile.LicenseFileId = storedFile.Id;
-                await unitOfWork.Repository<ProviderProfile>().AddAsync(providerProfile);
 
                 var providerLocation = mapper.Map<ProviderLocations>(providerRequest);
                 providerLocation.ProviderProfileId = providerProfile.Id;
