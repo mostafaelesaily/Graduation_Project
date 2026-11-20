@@ -13,7 +13,8 @@ namespace MedLink.Application.Mapping
                 .ForMember(dest => dest.ProviderId, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.ProviderType, opt => opt.MapFrom(src => src.ProviderType.ToString()))
                 .ForMember(dest => dest.VerificationStatus, opt => opt.MapFrom(src => src.verificationStatus.ToString()))
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.user.IsActice));
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.user.IsActice))
+                .ForMember(dest => dest.HasAvailabilityConfigured, opt => opt.MapFrom(src => src.HasAvailabilityConfigured));
 
             CreateMap<ProviderLocations, GetProviderLocationDto>();
 
@@ -32,6 +33,14 @@ namespace MedLink.Application.Mapping
             CreateMap<MedicalRecord, MedicalRecordDto>();
 
             CreateMap<CreateMedicalRecordDto, MedicalRecord>();
+
+            CreateMap<Review, ReviewDto>();
+
+            CreateMap<CreateReviewDto, Review>();
+
+            CreateMap<ProviderAvailability, ProviderAvailabilityDto>();
+
+            CreateMap<ProviderAvailabilityDto, ProviderAvailability>();
         }
     }
 }

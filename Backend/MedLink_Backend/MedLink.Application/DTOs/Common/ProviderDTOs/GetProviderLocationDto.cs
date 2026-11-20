@@ -1,0 +1,16 @@
+using System;
+
+namespace MedLink.Application.DTOs.Common.ProviderDTOs
+{
+    public class GetProviderLocationDto
+    {
+        public Guid Id { get; set; }
+        public string? BranchName { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public string PostalCode { get; set; } = string.Empty;
+        public string ServicePhoneNumber { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+    }
+}

@@ -22,6 +22,7 @@ namespace MedLink.infrastructure.Data
         public DbSet<MedicalRecord> MedicalRecords { get; set; }
         public DbSet<ProviderService> ProviderServices { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<ProviderAvailability> ProviderAvailabilities { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -57,6 +58,7 @@ namespace MedLink.infrastructure.Data
                 entity.Property(e => e.Status).IsRequired();
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.Property(e => e.Notes).HasMaxLength(1000);
+                entity.Property(e => e.CancellationReason).HasMaxLength(500);
                 entity.Property(e => e.RowVersion).IsRowVersion();
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => new { e.ProviderProfileId, e.BookingDate })
@@ -72,8 +74,8 @@ namespace MedLink.infrastructure.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.RecordDate).IsRequired();
-                entity.Property(e => e.Description).HasMaxLength(2000);
-                entity.Property(e => e.Diagnosis).HasMaxLength(2000);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.Diagnosis).IsRequired().HasMaxLength(2000);
                 entity.Property(e => e.Notes).HasMaxLength(2000);
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.HasIndex(e => e.PatientId);
@@ -117,6 +119,7 @@ namespace MedLink.infrastructure.Data
                 entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.NationalIdNumber).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.TaxNumber).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.RejectionReason).HasMaxLength(1000);
                 entity.Property(e => e.CreatedAt).IsRequired();
             });
             // Configure ProviderProfile entity End .   
@@ -216,6 +219,25 @@ namespace MedLink.infrastructure.Data
                 .WithMany(p => p.Reviews)
                 .HasForeignKey(r => r.ProviderProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure ProviderAvailability entity Start :
+            builder.Entity<ProviderAvailability>(entity =>
+            {
+                entity.ToTable("ProviderAvailabilities");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.DayOfWeek).IsRequired();
+                entity.Property(e => e.StartTime).IsRequired();
+                entity.Property(e => e.EndTime).IsRequired();
+                entity.HasIndex(e => new { e.ProviderProfileId, e.DayOfWeek });
+            });
+            // Configure ProviderAvailability entity End .
+
+            // Configure one-to-many relationship between ProviderProfile and ProviderAvailabilities
+            builder.Entity<ProviderAvailability>()
+                .HasOne(a => a.ProviderProfile)
+                .WithMany(p => p.ProviderAvailabilities)
+                .HasForeignKey(a => a.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
             // Relationship End .
 
 

@@ -12,6 +12,7 @@ namespace MedLink.Domain.Entities.Common
         public DateTime BookingDate { get; set; }
         public BookingStatus Status { get; set; } = BookingStatus.Pending;
         public string? Notes { get; set; }
+        public string? CancellationReason { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 

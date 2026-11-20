@@ -26,6 +26,17 @@ namespace MedLink.Application.Interfaces.Common
         Task DeleteServiceAsync(string userId, Guid serviceId);
 
         Task<MedicalRecordDto> CreateMedicalRecordAsync(string providerUserId, CreateMedicalRecordDto dto);
+        Task<MedicalRecordDto> GetMedicalRecordAsync(Guid recordId, string userId);
         Task<IReadOnlyList<MedicalRecordDto>> GetMyMedicalRecordsAsync(string patientUserId);
+        Task<IReadOnlyList<MedicalRecordDto>> GetMyCreatedMedicalRecordsAsync(string providerUserId);
+
+        Task<IReadOnlyList<GetProviderServiceDto>> GetPublicServicesAsync(Guid providerProfileId);
+
+        Task<ReviewDto> CreateReviewAsync(string patientUserId, CreateReviewDto dto);
+        Task<IReadOnlyList<ReviewDto>> GetProviderReviewsAsync(Guid providerProfileId);
+        Task<IReadOnlyList<ReviewDto>> GetMyReviewsAsync(string patientUserId);
+
+        Task<IReadOnlyList<ProviderAvailabilityDto>> GetMyAvailabilityAsync(string userId);
+        Task SetMyAvailabilityAsync(string userId, SetProviderAvailabilityDto dto);
     }
 }

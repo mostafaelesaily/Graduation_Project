@@ -80,7 +80,8 @@ namespace MedLink.Presentation.Controllers
 
         [HttpPost("documents")]
         [Authorize(Roles = "Provider")]
-        public async Task<IActionResult> UploadDocument([FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadDocument(Microsoft.AspNetCore.Http.IFormFile file)
         {
             var result = await providerService.UploadDocumentAsync(CurrentUserId, file);
             return Ok(result);
@@ -140,6 +141,44 @@ namespace MedLink.Presentation.Controllers
         {
             var result = await providerService.GetMyMedicalRecordsAsync(CurrentUserId);
             return Ok(result);
+        }
+
+        [HttpGet("medical-records/{recordId:guid}")]
+        public async Task<IActionResult> GetMedicalRecord(Guid recordId)
+        {
+            var result = await providerService.GetMedicalRecordAsync(recordId, CurrentUserId);
+            return Ok(result);
+        }
+
+        [HttpGet("medical-records/created")]
+        [Authorize(Roles = "Provider")]
+        public async Task<IActionResult> GetMyCreatedMedicalRecords()
+        {
+            var result = await providerService.GetMyCreatedMedicalRecordsAsync(CurrentUserId);
+            return Ok(result);
+        }
+
+        [HttpGet("services/public/{providerProfileId:guid}")]
+        public async Task<IActionResult> GetPublicServices(Guid providerProfileId)
+        {
+            var result = await providerService.GetPublicServicesAsync(providerProfileId);
+            return Ok(result);
+        }
+
+        [HttpGet("availability")]
+        [Authorize(Roles = "Provider")]
+        public async Task<IActionResult> GetAvailability()
+        {
+            var result = await providerService.GetMyAvailabilityAsync(CurrentUserId);
+            return Ok(result);
+        }
+
+        [HttpPut("availability")]
+        [Authorize(Roles = "Provider")]
+        public async Task<IActionResult> SetAvailability([FromBody] SetProviderAvailabilityDto dto)
+        {
+            await providerService.SetMyAvailabilityAsync(CurrentUserId, dto);
+            return NoContent();
         }
     }
 }

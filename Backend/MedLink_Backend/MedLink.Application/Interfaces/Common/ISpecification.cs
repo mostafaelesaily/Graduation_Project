@@ -16,6 +16,7 @@ namespace MedLink.Application.Interfaces.Common
         // Order-By-Descending :
         Expression<Func<T, object>>? OrderByDescending { get; }
         // Then-By-Descending (secondary/tie-breaker ordering) :
+        Expression<Func<T, object>>? ThenBy { get; }
         Expression<Func<T, object>>? ThenByDescending { get; }
         // Paggenation :
         int Skip { get; }

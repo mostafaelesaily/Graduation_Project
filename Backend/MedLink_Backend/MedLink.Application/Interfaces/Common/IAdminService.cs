@@ -16,6 +16,6 @@ namespace MedLink.Application.Interfaces.Common
             VerificationStatus? status = null);
         Task<IReadOnlyList<GetProviderDocumentDto>> GetProviderDocumentsAsync(Guid providerId);
         Task AcceptProviderAsync(Guid providerId);
-        Task RejectProviderAsync(Guid providerId);
+        Task RejectProviderAsync(Guid providerId, string? rejectionReason = null);
     }
 }

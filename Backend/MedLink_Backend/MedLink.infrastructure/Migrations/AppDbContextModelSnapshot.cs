@@ -32,6 +32,10 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -151,10 +155,12 @@ namespace MedLink.infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Diagnosis")
+                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
@@ -223,6 +229,31 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("Notification", "Shared");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderAvailability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderProfileId", "DayOfWeek");
+
+                    b.ToTable("ProviderAvailabilities", "Shared");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.Property<Guid>("Id")
@@ -280,6 +311,9 @@ namespace MedLink.infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("HasAvailabilityConfigured")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("LicenseFileId")
                         .HasColumnType("uniqueidentifier");
 
@@ -290,6 +324,10 @@ namespace MedLink.infrastructure.Migrations
 
                     b.Property<int>("ProviderType")
                         .HasColumnType("int");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("ServiceName")
                         .IsRequired()
@@ -637,6 +675,17 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderAvailability", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
+                        .WithMany("ProviderAvailabilities")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
@@ -770,6 +819,8 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("MedicalRecords");
+
+                    b.Navigation("ProviderAvailabilities");
 
                     b.Navigation("ProviderLocations");
 

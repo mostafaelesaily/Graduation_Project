@@ -6,6 +6,7 @@ using MedLink.Application.DTOs.Common.NotificationDTOs;
 using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.Bookings;
+using MedLink.Application.Specifications.ProviderManagement;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Domain.Enums;
@@ -31,19 +32,22 @@ namespace MedLink.Application.Services.Common
         private readonly INotificationService notificationService;
         private readonly UserManager<AppUser> userManager;
         private readonly ILogger<BookingService> logger;
+        private readonly IMailService? mailService;
 
         public BookingService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             INotificationService notificationService,
             UserManager<AppUser> userManager,
-            ILogger<BookingService> logger)
+            ILogger<BookingService> logger,
+            IMailService? mailService = null)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
             this.notificationService = notificationService;
             this.userManager = userManager;
             this.logger = logger;
+            this.mailService = mailService;
         }
 
         public async Task<GetBookingDto> CreateBookingAsync(CreateBookingDto dto, string userId)
@@ -73,6 +77,20 @@ namespace MedLink.Application.Services.Common
             try
             {
                 await ExpireOverdueBookingsAsync(dto.ProviderProfileId, dto.BookingDate, DateTime.UtcNow);
+
+                if (provider.HasAvailabilityConfigured)
+                {
+                    var availabilities = await unitOfWork.Repository<ProviderAvailability>()
+                        .GetAllAsync(new ProviderAvailabilitiesByProviderSpecification(provider.Id));
+                    var bookingTime = dto.BookingDate.TimeOfDay;
+                    var isWithinWorkingHours = availabilities.Any(a =>
+                        a.DayOfWeek == dto.BookingDate.DayOfWeek &&
+                        a.StartTime <= bookingTime &&
+                        bookingTime < a.EndTime);
+
+                    if (!isWithinWorkingHours)
+                        throw new BadRequestException("Booking time is outside provider working hours.");
+                }
 
                 var conflictSpec = new BookingConflictSpecification(dto.ProviderProfileId, dto.BookingDate);
                 var existing = await unitOfWork.Repository<Booking>().FindAsync(conflictSpec);
@@ -283,7 +301,15 @@ namespace MedLink.Application.Services.Common
             };
         }
 
-        public async Task<PaginatedResultDto<GetBookingDto>> GetProviderBookingsAsync(Guid providerProfileId, string userId, int pageNumber, int pageSize)
+        public async Task<PaginatedResultDto<GetBookingDto>> GetProviderBookingsAsync(
+            Guid providerProfileId,
+            string userId,
+            int pageNumber,
+            int pageSize,
+            string? filter = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? search = null)
         {
             var provider = await unitOfWork.Repository<ProviderProfile>().GetByIdAsync(providerProfileId);
             if (provider is null)
@@ -292,10 +318,13 @@ namespace MedLink.Application.Services.Common
             if (provider.userId != userId && !await IsAdminAsync(userId))
                 throw new ForbiddenException("You are not allowed to access these bookings.");
 
-            var countSpec = new BookingsByProviderSpecification(providerProfileId);
+            if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
+                throw new BadRequestException("Start date cannot be later than end date.");
+
+            var countSpec = new BookingsByProviderSpecification(providerProfileId, filter, startDate, endDate, search);
             var totalCount = await unitOfWork.Repository<Booking>().CountAsync(countSpec);
 
-            var pagedSpec = new BookingsByProviderSpecification(providerProfileId, pageNumber, pageSize);
+            var pagedSpec = new BookingsByProviderSpecification(providerProfileId, pageNumber, pageSize, filter, startDate, endDate, search);
             var list = await unitOfWork.Repository<Booking>().GetAllAsync(pagedSpec);
 
             return new PaginatedResultDto<GetBookingDto>
@@ -307,8 +336,11 @@ namespace MedLink.Application.Services.Common
             };
         }
 
-        public async Task CancelBookingAsync(Guid bookingId, string userId)
+        public async Task CancelBookingAsync(Guid bookingId, string userId, string? cancellationReason = null)
         {
+            if (cancellationReason != null && cancellationReason.Length > 500)
+                throw new BadRequestException("Cancellation reason cannot exceed 500 characters.");
+
             var booking = await LoadBookingAsync(bookingId);
 
             var isPatient = booking.UserId == userId;
@@ -331,6 +363,7 @@ namespace MedLink.Application.Services.Common
                 throw new ConflictException("Booking is already cancelled.");
 
             booking.Status = BookingStatus.Cancelled;
+            booking.CancellationReason = cancellationReason;
             unitOfWork.Repository<Booking>().Update(booking);
             try
             {
@@ -366,6 +399,67 @@ namespace MedLink.Application.Services.Common
                     },
                     booking.Id);
             }
+
+            await SendCancellationEmailAsync(booking, cancellationReason);
+        }
+
+        public async Task<BulkCancelBookingsResultDto> CancelBookingsAsync(IEnumerable<Guid> bookingIds, string? cancellationReason, string userId)
+        {
+            var result = new BulkCancelBookingsResultDto();
+            if (bookingIds == null)
+                return result;
+
+            var distinctIds = bookingIds.Distinct().ToList();
+            foreach (var bookingId in distinctIds)
+            {
+                try
+                {
+                    await CancelBookingAsync(bookingId, userId, cancellationReason);
+                    result.CancelledBookingIds.Add(bookingId);
+                }
+                catch (Exception ex) when (ex is BadRequestException || ex is ConflictException || ex is ForbiddenException || ex is NotFoundException)
+                {
+                    result.RejectedBookingIds.Add(bookingId);
+                    logger.LogWarning(ex, "Bulk cancellation rejected for booking {BookingId}.", bookingId);
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<ProviderBookingStatisticsDto> GetProviderBookingStatisticsAsync(string userId)
+        {
+            var profile = await GetProviderProfileByUserIdForBookingAsync(userId);
+
+            var now = DateTime.UtcNow;
+            var todayStart = now.Date;
+            var sevenDaysEnd = todayStart.AddDays(7);
+
+            var todayCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderTodayBookingsSpecification(profile.Id, todayStart));
+            var nextSevenDaysCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderNextSevenDaysBookingsSpecification(profile.Id, now, sevenDaysEnd));
+            var pendingCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderPendingBookingsSpecification(profile.Id));
+            var cancelledCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderCancelledBookingsSpecification(profile.Id));
+
+            return new ProviderBookingStatisticsDto
+            {
+                TodayCount = todayCount,
+                NextSevenDaysCount = nextSevenDaysCount,
+                PendingCount = pendingCount,
+                CancelledCount = cancelledCount
+            };
+        }
+
+        private async Task<ProviderProfile> GetProviderProfileByUserIdForBookingAsync(string userId)
+        {
+            var profile = await unitOfWork.Repository<ProviderProfile>()
+                .FindAsync(new MedLink.Application.Specifications.ProviderManagement.ProviderProfileByUserSpecification(userId));
+            if (profile == null)
+                throw new NotFoundException("Provider profile not found.");
+            return profile;
         }
 
         public async Task<bool> CheckAvailabilityAsync(Guid providerProfileId, DateTime bookingDate)
@@ -437,6 +531,28 @@ namespace MedLink.Application.Services.Common
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to send notification to {RecipientUserId} for booking {BookingId}.", recipientUserId, bookingId);
+            }
+        }
+
+        private async Task SendCancellationEmailAsync(Booking booking, string? cancellationReason)
+        {
+            if (mailService == null || booking.User?.Email == null)
+                return;
+
+            var reasonText = string.IsNullOrWhiteSpace(cancellationReason)
+                ? "No reason was provided."
+                : cancellationReason;
+
+            try
+            {
+                await mailService.sendMail(
+                    booking.User.Email,
+                    "Booking cancelled",
+                    $"Your booking scheduled for {booking.BookingDate:u} has been cancelled. Reason: {reasonText}");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send cancellation email for booking {BookingId}.", booking.Id);
             }
         }
 

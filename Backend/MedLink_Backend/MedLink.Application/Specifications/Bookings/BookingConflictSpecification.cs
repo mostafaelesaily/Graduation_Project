@@ -32,17 +32,59 @@ namespace MedLink.Application.Specifications.Bookings
         }
     }
 
+    public class ProviderTodayBookingsSpecification : BaseSpecification<Booking>
+    {
+        public ProviderTodayBookingsSpecification(Guid providerProfileId, DateTime dayStart)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && b.BookingDate >= dayStart
+                        && b.BookingDate < dayStart.AddDays(1))
+        {
+        }
+    }
+
+    public class ProviderNextSevenDaysBookingsSpecification : BaseSpecification<Booking>
+    {
+        public ProviderNextSevenDaysBookingsSpecification(Guid providerProfileId, DateTime start, DateTime endExclusive)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && b.BookingDate >= start
+                        && b.BookingDate < endExclusive
+                        && b.Status != BookingStatus.Cancelled
+                        && b.Status != BookingStatus.Expired)
+        {
+        }
+    }
+
+    public class ProviderPendingBookingsSpecification : BaseSpecification<Booking>
+    {
+        public ProviderPendingBookingsSpecification(Guid providerProfileId)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && b.Status == BookingStatus.Pending)
+        {
+        }
+    }
+
+    public class ProviderCancelledBookingsSpecification : BaseSpecification<Booking>
+    {
+        public ProviderCancelledBookingsSpecification(Guid providerProfileId)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && b.Status == BookingStatus.Cancelled)
+        {
+        }
+    }
+
     public class BookingsByUserSpecification : BaseSpecification<Booking>
     {
         public BookingsByUserSpecification(string userId)
             : base(b => b.UserId == userId)
         {
+            AddInclude(b => b.User);
             AddOrderByDescending(b => b.CreatedAt);
         }
 
         public BookingsByUserSpecification(string userId, int pageNumber, int pageSize)
             : base(b => b.UserId == userId)
         {
+            AddInclude(b => b.User);
             AddOrderByDescending(b => b.CreatedAt);
             ApplyPaging((pageNumber - 1) * pageSize, pageSize);
         }
@@ -50,15 +92,53 @@ namespace MedLink.Application.Specifications.Bookings
 
     public class BookingsByProviderSpecification : BaseSpecification<Booking>
     {
-        public BookingsByProviderSpecification(Guid providerProfileId)
-            : base(b => b.ProviderProfileId == providerProfileId)
+        public BookingsByProviderSpecification(
+            Guid providerProfileId,
+            string? filter = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? search = null)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && (string.IsNullOrWhiteSpace(filter)
+                            || filter == "upcoming" && b.BookingDate >= DateTime.UtcNow && b.Status != BookingStatus.Cancelled && b.Status != BookingStatus.Expired
+                            || filter == "today" && b.BookingDate >= DateTime.UtcNow.Date && b.BookingDate < DateTime.UtcNow.Date.AddDays(1)
+                            || filter == "past" && b.BookingDate < DateTime.UtcNow.Date
+                            || filter == "cancelled" && b.Status == BookingStatus.Cancelled)
+                        && (!startDate.HasValue || b.BookingDate >= startDate.Value)
+                        && (!endDate.HasValue || b.BookingDate <= endDate.Value)
+                        && (string.IsNullOrWhiteSpace(search)
+                            || (b.User != null && b.User.FullName != null && b.User.FullName.Contains(search))
+                            || (b.User != null && b.User.Email != null && b.User.Email.Contains(search))
+                            || (b.Notes != null && b.Notes.Contains(search))))
         {
+            AddInclude(b => b.User);
+            AddInclude(b => b.ProviderProfile);
             AddOrderByDescending(b => b.CreatedAt);
         }
 
-        public BookingsByProviderSpecification(Guid providerProfileId, int pageNumber, int pageSize)
-            : base(b => b.ProviderProfileId == providerProfileId)
+        public BookingsByProviderSpecification(
+            Guid providerProfileId,
+            int pageNumber,
+            int pageSize,
+            string? filter = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? search = null)
+            : base(b => b.ProviderProfileId == providerProfileId
+                        && (string.IsNullOrWhiteSpace(filter)
+                            || filter == "upcoming" && b.BookingDate >= DateTime.UtcNow && b.Status != BookingStatus.Cancelled && b.Status != BookingStatus.Expired
+                            || filter == "today" && b.BookingDate >= DateTime.UtcNow.Date && b.BookingDate < DateTime.UtcNow.Date.AddDays(1)
+                            || filter == "past" && b.BookingDate < DateTime.UtcNow.Date
+                            || filter == "cancelled" && b.Status == BookingStatus.Cancelled)
+                        && (!startDate.HasValue || b.BookingDate >= startDate.Value)
+                        && (!endDate.HasValue || b.BookingDate <= endDate.Value)
+                        && (string.IsNullOrWhiteSpace(search)
+                            || (b.User != null && b.User.FullName != null && b.User.FullName.Contains(search))
+                            || (b.User != null && b.User.Email != null && b.User.Email.Contains(search))
+                            || (b.Notes != null && b.Notes.Contains(search))))
         {
+            AddInclude(b => b.User);
+            AddInclude(b => b.ProviderProfile);
             AddOrderByDescending(b => b.CreatedAt);
             ApplyPaging((pageNumber - 1) * pageSize, pageSize);
         }

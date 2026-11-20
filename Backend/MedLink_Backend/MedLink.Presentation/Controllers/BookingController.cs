@@ -55,11 +55,32 @@ namespace MedLink.Presentation.Controllers
         }
 
         [HttpGet("provider/{providerProfileId:guid}")]
-        public async Task<IActionResult> GetByProvider([FromRoute] Guid providerProfileId,
+        public async Task<IActionResult> GetByProvider(
+            [FromRoute] Guid providerProfileId,
             [FromQuery] int pageNum = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? filter = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? search = null)
         {
-            var result = await bookingService.GetProviderBookingsAsync(providerProfileId, CurrentUserId, pageNum, pageSize);
+            var result = await bookingService.GetProviderBookingsAsync(
+                providerProfileId,
+                CurrentUserId,
+                pageNum,
+                pageSize,
+                filter,
+                startDate,
+                endDate,
+                search);
+            return Ok(result);
+        }
+
+        [HttpGet("statistics")]
+        [Authorize(Roles = Roles.Provider)]
+        public async Task<IActionResult> GetStatistics()
+        {
+            var result = await bookingService.GetProviderBookingStatisticsAsync(CurrentUserId);
             return Ok(result);
         }
 
@@ -80,10 +101,20 @@ namespace MedLink.Presentation.Controllers
         }
 
         [HttpPatch("{bookingId:guid}/cancel")]
-        public async Task<IActionResult> Cancel([FromRoute] Guid bookingId)
+        public async Task<IActionResult> Cancel(
+            [FromRoute] Guid bookingId,
+            [FromBody] CancelBookingDto? dto = null)
         {
-            await bookingService.CancelBookingAsync(bookingId, CurrentUserId);
+            await bookingService.CancelBookingAsync(bookingId, CurrentUserId, dto?.CancellationReason);
             return NoContent();
+        }
+
+        [HttpPatch("cancel/bulk")]
+        [Authorize(Roles = Roles.Provider)]
+        public async Task<IActionResult> BulkCancel([FromBody] BulkCancelBookingsDto dto)
+        {
+            var result = await bookingService.CancelBookingsAsync(dto.BookingIds, dto.CancellationReason, CurrentUserId);
+            return Ok(result);
         }
 
         [HttpGet("availability")]

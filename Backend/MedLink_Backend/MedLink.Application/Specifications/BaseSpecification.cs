@@ -8,12 +8,18 @@ namespace MedLink.Application.Specifications
 {
     public class BaseSpecification<T> : ISpecification<T> where T : class
     {
+        public Expression<Func<T, object>>? ThenBy { get; private set; }
         public Expression<Func<T, bool>>? Criteria { get; private set; }
 
         public List<Expression<Func<T, object>>> Includes { get; } = new();
         public Expression<Func<T, object>>? OrderBy { get; private set; }
 
         public Expression<Func<T, object>>? OrderByDescending  { get; private set; }
+        protected void AddThenBy(
+        Expression<Func<T, object>> thenByExpression)
+        {
+            ThenBy = thenByExpression;
+        }
 
         public Expression<Func<T, object>>? ThenByDescending { get; private set; }
 

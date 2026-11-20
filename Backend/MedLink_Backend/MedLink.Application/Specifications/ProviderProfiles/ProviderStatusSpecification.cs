@@ -20,6 +20,7 @@ namespace MedLink.Application.Specifications.ProviderProfiles
                 : (provider.verificationStatus == VerificationStatus.Pending ||
                    provider.verificationStatus == VerificationStatus.Rejected)) &&
              (string.IsNullOrWhiteSpace(search) ||
+              provider.FullName.Contains(search) ||
               provider.ServiceName.Contains(search) ||
               (provider.user != null && provider.user.Email != null && provider.user.Email.Contains(search)) ||
               (provider.user != null && provider.user.UserName != null && provider.user.UserName.Contains(search)))

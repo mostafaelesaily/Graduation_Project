@@ -17,6 +17,8 @@ namespace MedLink.Domain.Entities.Common
         public string TaxNumber { get; set; }
         public Guid LicenseFileId { get; set; }
         public VerificationStatus verificationStatus { get; set; } = VerificationStatus.Pending;
+        public string? RejectionReason { get; set; }
+        public bool HasAvailabilityConfigured { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public AppUser user { get; set; }
         public ICollection<ProviderLocations> ProviderLocations { get; set; } = new List<ProviderLocations>();
@@ -25,6 +27,7 @@ namespace MedLink.Domain.Entities.Common
         public ICollection<ProviderService> ProviderServices { get; set; } = new List<ProviderService>();
         public ICollection<MedicalRecord> MedicalRecords { get; set; } = new List<MedicalRecord>();
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public ICollection<ProviderAvailability> ProviderAvailabilities { get; set; } = new List<ProviderAvailability>();
 
     }
 }

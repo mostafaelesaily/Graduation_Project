@@ -11,6 +11,10 @@ namespace MedLink.Application.Mapping
             CreateMap<ProviderProfile, GetProviderRequestDto>()
                 .ForMember(dest => dest.ProviderId,
                     opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.FullName,
+                    opt => opt.MapFrom(src => src.FullName))
+                .ForMember(dest => dest.Email,
+                    opt => opt.MapFrom(src => src.user.Email))
                 .ForMember(dest => dest.PhoneNumber,
                     opt => opt.MapFrom(src => src.user.PhoneNumber))
                 .ForMember(dest => dest.LicenseImageUrl,

@@ -11,6 +11,8 @@ namespace MedLink.Application.DTOs.Common.BookingDTOs
         public DateTime BookingDate { get; set; }
         public BookingStatus Status { get; set; }
         public string? Notes { get; set; }
+        public string? CancellationReason { get; set; }
+        public string? PatientName { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

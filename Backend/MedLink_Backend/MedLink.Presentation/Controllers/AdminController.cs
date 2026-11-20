@@ -49,9 +49,10 @@ namespace MedLink.Presentation.Controllers
 
         [HttpPatch("providers/{providerId:guid}/reject")]
         public async Task<IActionResult> RejectProvider(
-            [FromRoute] Guid providerId)
+            [FromRoute] Guid providerId,
+            [FromQuery] string? reason = null)
         {
-            await adminService.RejectProviderAsync(providerId);
+            await adminService.RejectProviderAsync(providerId, reason);
 
             return NoContent();
         }

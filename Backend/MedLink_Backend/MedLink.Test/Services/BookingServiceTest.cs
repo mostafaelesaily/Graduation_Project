@@ -5,6 +5,7 @@ using MedLink.Application.DTOs.Common.NotificationDTOs;
 using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Services.Common;
+using MedLink.Application.Specifications.Bookings;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Domain.Enums;
@@ -22,9 +23,11 @@ namespace MedLink.Test.Services
         private readonly Mock<ILogger<BookingService>> loggerMock = new();
         private readonly Mock<UserManager<AppUser>> userManagerMock;
         private readonly Mock<INotificationService> notificationServiceMock = new();
+        private readonly Mock<IMailService> mailServiceMock = new();
         private readonly Mock<IUnitOfWork> unitOfWorkMock = new();
         private readonly Mock<IGenaricRepo<Booking>> bookingRepositoryMock = new();
         private readonly Mock<IGenaricRepo<ProviderProfile>> providerRepositoryMock = new();
+        private readonly Mock<IGenaricRepo<ProviderAvailability>> availabilityRepositoryMock = new();
 
         private readonly BookingService sut;
 
@@ -40,9 +43,13 @@ namespace MedLink.Test.Services
 
             unitOfWorkMock.Setup(u => u.Repository<Booking>()).Returns(bookingRepositoryMock.Object);
             unitOfWorkMock.Setup(u => u.Repository<ProviderProfile>()).Returns(providerRepositoryMock.Object);
+            unitOfWorkMock.Setup(u => u.Repository<ProviderAvailability>()).Returns(availabilityRepositoryMock.Object);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>());
             bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(new List<Booking>());
             unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>())).ReturnsAsync(0);
             unitOfWorkMock.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
             unitOfWorkMock.Setup(u => u.CommitTransactionAsync()).Returns(Task.CompletedTask);
             unitOfWorkMock.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
@@ -59,6 +66,18 @@ namespace MedLink.Test.Services
                     CreatedAt = booking.CreatedAt
                 });
 
+            mapperMock.Setup(m => m.Map<IReadOnlyList<GetBookingDto>>(It.IsAny<IEnumerable<Booking>>()))
+                .Returns((IEnumerable<Booking> bookings) => bookings.Select(b => new GetBookingDto
+                {
+                    Id = b.Id,
+                    UserId = b.UserId,
+                    ProviderProfileId = b.ProviderProfileId,
+                    BookingDate = b.BookingDate,
+                    Status = b.Status,
+                    Notes = b.Notes,
+                    CreatedAt = b.CreatedAt
+                }).ToList());
+
             userManagerMock.Setup(x => x.FindByIdAsync(It.IsAny<string>()))
                 .ReturnsAsync((string id) => new AppUser { Id = id });
             userManagerMock.Setup(x => x.IsInRoleAsync(It.IsAny<AppUser>(), It.IsAny<string>()))
@@ -69,7 +88,8 @@ namespace MedLink.Test.Services
                 mapperMock.Object,
                 notificationServiceMock.Object,
                 userManagerMock.Object,
-                loggerMock.Object);
+                loggerMock.Object,
+                mailServiceMock.Object);
         }
 
         private static ProviderProfile CreateApprovedProvider()
@@ -671,6 +691,439 @@ namespace MedLink.Test.Services
                 .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
 
             await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
+        }
+
+        [Fact]
+        public async Task GetProviderBookingStatisticsAsync_UsesDatabaseCounts()
+        {
+            var provider = new ProviderProfile { Id = ProviderId, userId = ProviderUserId };
+            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(provider);
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync((ISpecification<Booking> spec) =>
+                {
+                    if (spec is ProviderTodayBookingsSpecification) return 2;
+                    if (spec is ProviderNextSevenDaysBookingsSpecification) return 3;
+                    if (spec is ProviderPendingBookingsSpecification) return 4;
+                    if (spec is ProviderCancelledBookingsSpecification) return 5;
+                    return 0;
+                });
+
+            var result = await sut.GetProviderBookingStatisticsAsync(ProviderUserId);
+
+            Assert.Equal(2, result.TodayCount);
+            Assert.Equal(3, result.NextSevenDaysCount);
+            Assert.Equal(4, result.PendingCount);
+            Assert.Equal(5, result.CancelledCount);
+            bookingRepositoryMock.Verify(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()), Times.Exactly(4));
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_NeverConfiguredProvider_AllowsBooking()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = false;
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = DateTime.UtcNow.AddDays(1)
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync((Booking?)null);
+
+            var result = await sut.CreateBookingAsync(dto, PatientId);
+
+            Assert.Equal(BookingStatus.Pending, result.Status);
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderOutsideWorkingHours_ThrowsBadRequest()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(11);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>
+                {
+                    new ProviderAvailability
+                    {
+                        ProviderProfileId = ProviderId,
+                        DayOfWeek = bookingDate.DayOfWeek,
+                        StartTime = TimeSpan.FromHours(9),
+                        EndTime = TimeSpan.FromHours(10)
+                    }
+                });
+
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.CreateBookingAsync(dto, PatientId));
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderInsideWorkingHours_ReturnsPending()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(9).AddMinutes(30);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync((Booking?)null);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>
+                {
+                    new ProviderAvailability
+                    {
+                        ProviderProfileId = ProviderId,
+                        DayOfWeek = bookingDate.DayOfWeek,
+                        StartTime = TimeSpan.FromHours(9),
+                        EndTime = TimeSpan.FromHours(10)
+                    }
+                });
+
+            var result = await sut.CreateBookingAsync(dto, PatientId);
+
+            Assert.Equal(BookingStatus.Pending, result.Status);
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderDayOff_ThrowsBadRequest()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(9);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>());
+
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.CreateBookingAsync(dto, PatientId));
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderWrongWeekday_ThrowsBadRequest()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(9);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>
+                {
+                    new ProviderAvailability
+                    {
+                        ProviderProfileId = ProviderId,
+                        DayOfWeek = bookingDate.DayOfWeek == DayOfWeek.Monday ? DayOfWeek.Tuesday : DayOfWeek.Monday,
+                        StartTime = TimeSpan.FromHours(9),
+                        EndTime = TimeSpan.FromHours(10)
+                    }
+                });
+
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.CreateBookingAsync(dto, PatientId));
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderMultipleIntervals_ReturnsPending()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(11).AddMinutes(30);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync((Booking?)null);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>
+                {
+                    new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = bookingDate.DayOfWeek, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10) },
+                    new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = bookingDate.DayOfWeek, StartTime = TimeSpan.FromHours(11), EndTime = TimeSpan.FromHours(12) }
+                });
+
+            var result = await sut.CreateBookingAsync(dto, PatientId);
+
+            Assert.Equal(BookingStatus.Pending, result.Status);
+        }
+
+        [Fact]
+        public async Task CreateBookingAsync_ConfiguredProviderBoundaryStart_ReturnsPending()
+        {
+            var provider = CreateApprovedProvider();
+            provider.HasAvailabilityConfigured = true;
+            var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(9);
+            var dto = new CreateBookingDto
+            {
+                ProviderProfileId = ProviderId,
+                BookingDate = bookingDate
+            };
+
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
+                .ReturnsAsync(provider);
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync((Booking?)null);
+            availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
+                .ReturnsAsync(new List<ProviderAvailability>
+                {
+                    new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = bookingDate.DayOfWeek, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(10) }
+                });
+
+            var result = await sut.CreateBookingAsync(dto, PatientId);
+
+            Assert.Equal(BookingStatus.Pending, result.Status);
+        }
+
+        [Fact]
+        public async Task GetProviderBookingsAsync_FilterUpcoming_ReturnsOnlyUpcomingBookings()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId)).ReturnsAsync(provider);
+
+            var upcoming = CreatePendingBooking();
+            upcoming.BookingDate = DateTime.UtcNow.AddDays(1);
+            var cancelled = CreatePendingBooking();
+            cancelled.Id = Guid.NewGuid();
+            cancelled.BookingDate = DateTime.UtcNow.AddDays(2);
+            cancelled.Status = BookingStatus.Cancelled;
+
+            var bookings = new List<Booking> { upcoming, cancelled };
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec)));
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec).Count));
+
+            var result = await sut.GetProviderBookingsAsync(ProviderId, ProviderUserId, 1, 10, "upcoming", null, null, null);
+
+            Assert.Single(result.Data);
+            Assert.Equal(upcoming.Id, result.Data[0].Id);
+            Assert.Equal(1, result.TotalCount);
+        }
+
+        [Fact]
+        public async Task GetProviderBookingsAsync_DateRange_ReturnsBoundedBookings()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId)).ReturnsAsync(provider);
+
+            var first = CreatePendingBooking();
+            first.BookingDate = DateTime.UtcNow.AddDays(1);
+            var second = CreatePendingBooking();
+            second.Id = Guid.NewGuid();
+            second.BookingDate = DateTime.UtcNow.AddDays(5);
+
+            var bookings = new List<Booking> { first, second };
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec)));
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec).Count));
+
+            var result = await sut.GetProviderBookingsAsync(
+                ProviderId,
+                ProviderUserId,
+                1,
+                10,
+                null,
+                DateTime.UtcNow.AddDays(2),
+                DateTime.UtcNow.AddDays(6),
+                null);
+
+            Assert.Single(result.Data);
+            Assert.Equal(second.Id, result.Data[0].Id);
+        }
+
+        [Fact]
+        public async Task GetProviderBookingsAsync_SearchByPatientName_ReturnsMatchingBooking()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId)).ReturnsAsync(provider);
+
+            var matching = CreatePendingBooking();
+            matching.BookingDate = DateTime.UtcNow.AddDays(1);
+            matching.User = new AppUser { Id = PatientId, FullName = "Alice Patient", Email = "alice@example.com" };
+            var other = CreatePendingBooking();
+            other.Id = Guid.NewGuid();
+            other.BookingDate = DateTime.UtcNow.AddDays(2);
+            other.User = new AppUser { Id = "other", FullName = "Bob Patient", Email = "bob@example.com" };
+
+            var bookings = new List<Booking> { matching, other };
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec)));
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(FilterBookings(bookings, spec).Count));
+
+            var result = await sut.GetProviderBookingsAsync(ProviderId, ProviderUserId, 1, 10, null, null, null, "Alice");
+
+            Assert.Single(result.Data);
+            Assert.Equal(matching.Id, result.Data[0].Id);
+        }
+
+        [Fact]
+        public async Task GetProviderBookingsAsync_Pagination_ReturnsPageAndTotalCount()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId)).ReturnsAsync(provider);
+
+            var first = CreatePendingBooking();
+            first.BookingDate = DateTime.UtcNow.AddDays(1);
+            var second = CreatePendingBooking();
+            second.Id = Guid.NewGuid();
+            second.BookingDate = DateTime.UtcNow.AddDays(2);
+
+            var bookings = new List<Booking> { first, second };
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) =>
+                {
+                    var filtered = bookings.Where(b => spec.Criteria == null || spec.Criteria.Compile()(b)).ToList();
+                    if (spec.IsPagingEnabled)
+                        filtered = filtered.Skip(spec.Skip).Take(spec.Take).ToList();
+                    return Task.FromResult<IReadOnlyList<Booking>>(filtered);
+                });
+            bookingRepositoryMock.Setup(r => r.CountAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) => Task.FromResult(bookings.Count(b => spec.Criteria == null || spec.Criteria.Compile()(b))));
+
+            var result = await sut.GetProviderBookingsAsync(ProviderId, ProviderUserId, 1, 1, null, null, null, null);
+
+            Assert.Single(result.Data);
+            Assert.Equal(1, result.PageNumber);
+            Assert.Equal(1, result.PageSize);
+            Assert.Equal(2, result.TotalCount);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_WithReason_PersistsCancellationReason()
+        {
+            var booking = CreatePendingBooking();
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+
+            await sut.CancelBookingAsync(booking.Id, PatientId, "Patient requested cancellation");
+
+            Assert.Equal(BookingStatus.Cancelled, booking.Status);
+            Assert.Equal("Patient requested cancellation", booking.CancellationReason);
+            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_PersistenceFailure_DoesNotSendEmail()
+        {
+            var booking = CreatePendingBooking();
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
+                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId, "Reason"));
+
+            mailServiceMock.Verify(m => m.sendMail(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_Success_SendsCancellationEmail()
+        {
+            var booking = CreatePendingBooking();
+            booking.User = new AppUser { Id = PatientId, Email = "patient@example.com" };
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+            mailServiceMock.Setup(m => m.sendMail(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            await sut.CancelBookingAsync(booking.Id, PatientId, "Reason");
+
+            mailServiceMock.Verify(m => m.sendMail("patient@example.com", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_MixedValidAndInvalid_ReturnsCancelledAndRejectedIds()
+        {
+            var validBooking = CreatePendingBooking();
+            var invalidBooking = CreatePendingBooking();
+            invalidBooking.Id = Guid.NewGuid();
+            invalidBooking.Status = BookingStatus.Completed;
+
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .Returns((ISpecification<Booking> spec) =>
+                {
+                    var compiled = spec.Criteria?.Compile();
+                    if (compiled != null && compiled(validBooking)) return Task.FromResult<Booking?>(validBooking);
+                    if (compiled != null && compiled(invalidBooking)) return Task.FromResult<Booking?>(invalidBooking);
+                    return Task.FromResult<Booking?>(null);
+                });
+
+            var result = await sut.CancelBookingsAsync(new[] { validBooking.Id, invalidBooking.Id }, "Reason", PatientId);
+
+            Assert.Contains(validBooking.Id, result.CancelledBookingIds);
+            Assert.Contains(invalidBooking.Id, result.RejectedBookingIds);
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_DuplicateIds_ProcessesOnce()
+        {
+            var booking = CreatePendingBooking();
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+
+            var result = await sut.CancelBookingsAsync(new[] { booking.Id, booking.Id }, "Reason", PatientId);
+
+            Assert.Single(result.CancelledBookingIds);
+            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_OtherProviderBooking_RejectsBooking()
+        {
+            var booking = CreatePendingBooking();
+            booking.UserId = "other-patient";
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+
+            var result = await sut.CancelBookingsAsync(new[] { booking.Id }, "Reason", PatientId);
+
+            Assert.Empty(result.CancelledBookingIds);
+            Assert.Contains(booking.Id, result.RejectedBookingIds);
+        }
+
+        private static IReadOnlyList<Booking> FilterBookings(List<Booking> bookings, ISpecification<Booking> spec)
+        {
+            var filtered = spec.Criteria == null
+                ? bookings
+                : bookings.Where(b => spec.Criteria.Compile()(b)).ToList();
+
+            if (spec.IsPagingEnabled)
+                filtered = filtered.Skip(spec.Skip).Take(spec.Take).ToList();
+
+            return filtered.AsReadOnly();
         }
     }
 }
