@@ -40,6 +40,8 @@ namespace MedLink.Test.Services
 
             unitOfWorkMock.Setup(u => u.Repository<Booking>()).Returns(bookingRepositoryMock.Object);
             unitOfWorkMock.Setup(u => u.Repository<ProviderProfile>()).Returns(providerRepositoryMock.Object);
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking>());
             unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
             unitOfWorkMock.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
             unitOfWorkMock.Setup(u => u.CommitTransactionAsync()).Returns(Task.CompletedTask);
@@ -630,6 +632,45 @@ namespace MedLink.Test.Services
 
             Assert.Equal(0, expiredCount);
             Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        }
+
+        [Fact]
+        public async Task ExpireOverdueBookingsAsync_ConcurrentApprovalWins_DoesNotOverwriteConfirmedBooking()
+        {
+            var booking = CreatePendingBooking();
+            booking.CreatedAt = DateTime.UtcNow.AddHours(-9);
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking> { booking });
+            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
+                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
+
+            var expiredCount = await sut.ExpireOverdueBookingsAsync();
+
+            Assert.Equal(0, expiredCount);
+            Assert.Equal(BookingStatus.Pending, booking.Status);
+        }
+
+        [Fact]
+        public async Task CancelBookingAsync_ExpiredBooking_ThrowsConflict()
+        {
+            var booking = CreatePendingBooking();
+            booking.Status = BookingStatus.Expired;
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
+        }
+
+        [Fact]
+        public async Task ApproveBookingAsync_ConcurrencyConflict_ThrowsConflict()
+        {
+            var booking = CreatePendingBooking();
+            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(booking);
+            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
+                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
         }
     }
 }

@@ -20,8 +20,13 @@ namespace MedLink.Application.Specifications.Bookings
 
     public class OverduePendingBookingsSpecification : BaseSpecification<Booking>
     {
-        public OverduePendingBookingsSpecification(DateTime? asOfUtc = null)
+        public OverduePendingBookingsSpecification(
+            Guid? providerProfileId = null,
+            DateTime? bookingDate = null,
+            DateTime? asOfUtc = null)
             : base(b => b.Status == BookingStatus.Pending
+                        && (!providerProfileId.HasValue || b.ProviderProfileId == providerProfileId.Value)
+                        && (!bookingDate.HasValue || b.BookingDate == bookingDate.Value)
                         && b.CreatedAt <= (asOfUtc ?? DateTime.UtcNow).AddHours(-8))
         {
         }

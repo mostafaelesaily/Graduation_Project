@@ -16,6 +16,9 @@ namespace MedLink.Application.Interfaces.Common
         Task<PaginatedResultDto<GetBookingDto>> GetProviderBookingsAsync(Guid providerProfileId, string userId, int pageNumber, int pageSize);
         Task CancelBookingAsync(Guid bookingId, string userId);
         Task<bool> CheckAvailabilityAsync(Guid providerProfileId, DateTime bookingDate);
-        Task<int> ExpireOverdueBookingsAsync();
+        Task<int> ExpireOverdueBookingsAsync(
+            Guid? providerProfileId = null,
+            DateTime? bookingDate = null,
+            DateTime? asOfUtc = null);
     }
 }
