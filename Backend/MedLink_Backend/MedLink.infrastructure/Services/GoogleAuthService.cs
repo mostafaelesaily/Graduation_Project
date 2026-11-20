@@ -20,16 +20,24 @@ namespace MedLink.infrastructure.Services
 
         public async Task<GoogleUserInfoDto> ValidateIdTokenAsync(string idToken)
         {
-            var clientId = configuration["GoogleAuth:WEB_CLIENT_ID"];
-            if (string.IsNullOrWhiteSpace(clientId))
+            var webClientId = configuration["GoogleAuth:WEB_CLIENT_ID"];
+            var androidClientId = configuration["GoogleAuth:ANDROID_CLIENT_ID"];
+
+            if (string.IsNullOrWhiteSpace(webClientId))
             {
                 logger.LogError("Google sign-in is not configured. Missing GoogleAuth:WEB_CLIENT_ID.");
                 throw new BadRequestException("Google sign-in is not configured on the server.");
             }
 
+            var audiences = new List<string> { webClientId };
+            if (!string.IsNullOrWhiteSpace(androidClientId))
+            {
+                audiences.Add(androidClientId);
+            }
+
             var settings = new GoogleJsonWebSignature.ValidationSettings
             {
-                Audience = new[] { clientId }
+                Audience = audiences.ToArray()
             };
 
             GoogleJsonWebSignature.Payload payload;
