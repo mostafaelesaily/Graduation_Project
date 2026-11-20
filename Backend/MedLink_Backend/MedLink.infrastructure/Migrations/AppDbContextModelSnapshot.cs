@@ -61,7 +61,7 @@ namespace MedLink.infrastructure.Migrations
 
                     b.HasIndex("ProviderProfileId", "BookingDate")
                         .IsUnique()
-                        .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+                        .HasFilter("([Status] <> 2 AND [Status] <> 4 AND [Status] <> 5)");
 
                     b.ToTable("Bookings", "Shared");
                 });
@@ -285,7 +285,12 @@ namespace MedLink.infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ProviderProfileId");
 
                     b.ToTable("storedFiles", "Shared");
                 });
@@ -512,6 +517,17 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("user");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.StoredFile", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
+                        .WithMany("StoredFiles")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -578,6 +594,8 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("ProviderLocations");
+
+                    b.Navigation("StoredFiles");
                 });
 #pragma warning restore 612, 618
         }

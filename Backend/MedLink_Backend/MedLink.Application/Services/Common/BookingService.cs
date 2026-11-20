@@ -135,6 +135,22 @@ namespace MedLink.Application.Services.Common
             if (booking.Status != BookingStatus.Pending)
                 throw new ConflictException("Only pending bookings can be approved.");
 
+            if (booking.CreatedAt.AddHours(8) <= DateTime.UtcNow)
+            {
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Ignore concurrency failures while recording expiration.
+                }
+
+                throw new ConflictException("Booking has expired.");
+            }
+
             booking.Status = BookingStatus.Confirmed;
             unitOfWork.Repository<Booking>().Update(booking);
             try
@@ -168,6 +184,22 @@ namespace MedLink.Application.Services.Common
 
             if (booking.Status != BookingStatus.Pending)
                 throw new ConflictException("Only pending bookings can be rejected.");
+
+            if (booking.CreatedAt.AddHours(8) <= DateTime.UtcNow)
+            {
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Ignore concurrency failures while recording expiration.
+                }
+
+                throw new ConflictException("Booking has expired.");
+            }
 
             booking.Status = BookingStatus.Rejected;
             unitOfWork.Repository<Booking>().Update(booking);
@@ -288,6 +320,9 @@ namespace MedLink.Application.Services.Common
             if (booking.Status == BookingStatus.Rejected)
                 throw new ConflictException("Rejected bookings cannot be cancelled.");
 
+            if (booking.Status == BookingStatus.Expired)
+                throw new ConflictException("Expired bookings cannot be cancelled.");
+
             if (booking.Status == BookingStatus.Cancelled)
                 throw new ConflictException("Booking is already cancelled.");
 
@@ -341,6 +376,30 @@ namespace MedLink.Application.Services.Common
             var spec = new BookingConflictSpecification(providerProfileId, bookingDate);
             var existing = await unitOfWork.Repository<Booking>().FindAsync(spec);
             return existing is null;
+        }
+
+        public async Task<int> ExpireOverdueBookingsAsync()
+        {
+            var spec = new OverduePendingBookingsSpecification();
+            var overdue = await unitOfWork.Repository<Booking>().GetAllAsync(spec);
+
+            if (overdue.Count == 0)
+                return 0;
+
+            foreach (var booking in overdue)
+            {
+                if (booking.Status != BookingStatus.Pending)
+                    continue;
+
+                if (booking.CreatedAt.AddHours(8) > DateTime.UtcNow)
+                    continue;
+
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+            }
+
+            await unitOfWork.SaveChangesAsync();
+            return overdue.Count;
         }
 
         private async Task SafeNotifyAsync(string recipientUserId, CreateNotificationDto notification, Guid bookingId)
