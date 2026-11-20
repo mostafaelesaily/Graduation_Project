@@ -58,7 +58,7 @@ namespace MedLink.infrastructure.Data
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => new { e.ProviderProfileId, e.BookingDate })
                     .IsUnique()
-                    .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+                    .HasFilter("([Status] <> 2 AND [Status] <> 4 AND [Status] <> 5)");
             });
             // Configure Booking entity End .
 

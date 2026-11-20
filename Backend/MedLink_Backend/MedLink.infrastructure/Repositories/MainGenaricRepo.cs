@@ -25,8 +25,11 @@ namespace MedLink.infrastructure.Repositories
         public async Task<IReadOnlyList<T>> GetAllAsync(
             ISpecification<T> specification)
         {
+            // Keep the entity graph tracked so optimistic concurrency tokens
+            // (such as Booking.RowVersion) retain their original database values
+            // when the entity is later updated.
             var query = SpecificationEvaluator<T>.GetQuery(
-                dbset.AsNoTracking(),
+                dbset,
                 specification);
 
             return await query.ToListAsync();
@@ -35,8 +38,10 @@ namespace MedLink.infrastructure.Repositories
         public async Task<T?> FindAsync(
             ISpecification<T> specification)
         {
+            // Keep the entity tracked so the original RowVersion is preserved
+            // for optimistic concurrency checks during mutations.
             var query = SpecificationEvaluator<T>.GetQuery(
-                dbset.AsNoTracking(),
+                dbset,
                 specification);
 
             return await query.FirstOrDefaultAsync();

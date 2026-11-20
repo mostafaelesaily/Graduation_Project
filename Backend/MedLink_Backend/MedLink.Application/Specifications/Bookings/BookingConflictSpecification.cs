@@ -6,11 +6,28 @@ namespace MedLink.Application.Specifications.Bookings
 {
     public class BookingConflictSpecification : BaseSpecification<Booking>
     {
-        public BookingConflictSpecification(Guid providerProfileId, DateTime bookingDate)
+        public BookingConflictSpecification(Guid providerProfileId, DateTime bookingDate, DateTime? asOfUtc = null)
             : base(b => b.ProviderProfileId == providerProfileId
                         && b.BookingDate == bookingDate
                         && b.Status != BookingStatus.Cancelled
-                        && b.Status != BookingStatus.Rejected)
+                        && b.Status != BookingStatus.Rejected
+                        && b.Status != BookingStatus.Expired
+                        && !(b.Status == BookingStatus.Pending
+                             && b.CreatedAt <= (asOfUtc ?? DateTime.UtcNow).AddHours(-8)))
+        {
+        }
+    }
+
+    public class OverduePendingBookingsSpecification : BaseSpecification<Booking>
+    {
+        public OverduePendingBookingsSpecification(
+            Guid? providerProfileId = null,
+            DateTime? bookingDate = null,
+            DateTime? asOfUtc = null)
+            : base(b => b.Status == BookingStatus.Pending
+                        && (!providerProfileId.HasValue || b.ProviderProfileId == providerProfileId.Value)
+                        && (!bookingDate.HasValue || b.BookingDate == bookingDate.Value)
+                        && b.CreatedAt <= (asOfUtc ?? DateTime.UtcNow).AddHours(-8))
         {
         }
     }
