@@ -32,6 +32,7 @@ namespace MedLink.Application.Interfaces.Common
             string? search = null);
         Task<ProviderBookingStatisticsDto> GetProviderBookingStatisticsAsync(string userId);
         Task CancelBookingAsync(Guid bookingId, string userId);
+        Task CancelBookingsAsync(IEnumerable<Guid> bookingIds, string userId);
         Task<bool> CheckAvailabilityAsync(Guid providerProfileId, DateTime bookingDate);
         Task<int> ExpireOverdueBookingsAsync(
             Guid? providerProfileId = null,

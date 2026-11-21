@@ -144,6 +144,16 @@ namespace MedLink.Application.Specifications.Bookings
         }
     }
 
+    public class BookingsByIdsSpecification : BaseSpecification<Booking>
+    {
+        public BookingsByIdsSpecification(IEnumerable<Guid> bookingIds)
+            : base(b => bookingIds.Contains(b.Id))
+        {
+            AddInclude(b => b.User);
+            AddInclude(b => b.ProviderProfile);
+        }
+    }
+
     public class BookingByIdSpecification : BaseSpecification<Booking>
     {
         public BookingByIdSpecification(Guid bookingId)

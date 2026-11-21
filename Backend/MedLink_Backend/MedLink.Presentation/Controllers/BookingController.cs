@@ -115,6 +115,14 @@ namespace MedLink.Presentation.Controllers
             return NoContent();
         }
 
+        [HttpPatch("cancel/bulk")]
+        [Authorize(Roles = Roles.Provider)]
+        public async Task<IActionResult> BulkCancel([FromBody] List<Guid> bookingIds)
+        {
+            await bookingService.CancelBookingsAsync(bookingIds, CurrentUserId);
+            return NoContent();
+        }
+
         [HttpGet("availability")]
         public async Task<IActionResult> Availability([FromQuery] Guid providerProfileId, [FromQuery] DateTime bookingDate)
         {

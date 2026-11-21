@@ -199,5 +199,74 @@ namespace MedLink.Test.Services
             Assert.Equal(1, result.TotalCount);
             Assert.Equal(VerificationStatus.Approved, dtos[0].Status);
         }
+
+        [Theory]
+        [InlineData(VerificationStatus.Pending)]
+        [InlineData(VerificationStatus.Approved)]
+        [InlineData(VerificationStatus.Rejected)]
+        public async Task GetAllProviderRequest_ExplicitStatus_ReturnsOnlyThatStatus(VerificationStatus status)
+        {
+            var provider = CreateProvider(status);
+            providerRepoMock
+                .Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(new List<ProviderProfile> { provider });
+            providerRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(1);
+            mapperMock
+                .Setup(m => m.Map<IReadOnlyList<GetProviderRequestDto>>(It.IsAny<IEnumerable<ProviderProfile>>()))
+                .Returns(new List<GetProviderRequestDto> { new GetProviderRequestDto { ProviderId = provider.Id } });
+
+            var result = await sut.GetAllProviderRequest(1, 10, null, status);
+
+            Assert.Equal(1, result.TotalCount);
+            Assert.Single(result.Data);
+        }
+
+        [Fact]
+        public async Task GetAllProviderRequest_MissingStatus_ReturnsAllStatuses()
+        {
+            var pendingProvider = CreateProvider(VerificationStatus.Pending);
+            var approvedProvider = CreateProvider(VerificationStatus.Approved);
+            var rejectedProvider = CreateProvider(VerificationStatus.Rejected);
+            var providers = new List<ProviderProfile> { pendingProvider, approvedProvider, rejectedProvider };
+
+            providerRepoMock
+                .Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(providers);
+            providerRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(3);
+            mapperMock
+                .Setup(m => m.Map<IReadOnlyList<GetProviderRequestDto>>(It.IsAny<IEnumerable<ProviderProfile>>()))
+                .Returns(providers.Select(p => new GetProviderRequestDto { ProviderId = p.Id }).ToList());
+
+            var result = await sut.GetAllProviderRequest(1, 10, null, null);
+
+            Assert.Equal(3, result.TotalCount);
+            Assert.Equal(3, result.Data.Count);
+        }
+
+        [Fact]
+        public async Task GetAllProviderRequest_SearchWithStatus_PreservesPagination()
+        {
+            var provider = CreateProvider(VerificationStatus.Pending);
+            provider.ServiceName = "Searchable Provider";
+            providerRepoMock
+                .Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(new List<ProviderProfile> { provider });
+            providerRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(1);
+            mapperMock
+                .Setup(m => m.Map<IReadOnlyList<GetProviderRequestDto>>(It.IsAny<IEnumerable<ProviderProfile>>()))
+                .Returns(new List<GetProviderRequestDto> { new GetProviderRequestDto { ProviderId = provider.Id } });
+
+            var result = await sut.GetAllProviderRequest(2, 5, "Searchable", VerificationStatus.Pending);
+
+            Assert.Equal(2, result.PageNumber);
+            Assert.Equal(5, result.PageSize);
+            Assert.Equal(1, result.TotalCount);
+        }
     }
 }

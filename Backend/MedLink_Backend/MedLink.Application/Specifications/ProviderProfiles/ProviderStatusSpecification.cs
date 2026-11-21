@@ -14,8 +14,7 @@ namespace MedLink.Application.Specifications.ProviderProfiles
             : base(provider =>
                 (status.HasValue
                     ? provider.verificationStatus == status.Value
-                    : (provider.verificationStatus == VerificationStatus.Pending ||
-                       provider.verificationStatus == VerificationStatus.Rejected)) &&
+                    : true) &&
                 (string.IsNullOrWhiteSpace(search) ||
                  provider.ServiceName.Contains(search) ||
                  (provider.user != null && provider.user.Email != null && provider.user.Email.Contains(search)) ||

@@ -874,5 +874,77 @@ namespace MedLink.Test.Services
 
             await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
         }
+
+        [Fact]
+        public async Task CancelBookingsAsync_ValidBookings_CancelsAll()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(provider);
+
+            var booking1 = CreatePendingBooking();
+            var booking2 = CreatePendingBooking();
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking> { booking1, booking2 });
+
+            await sut.CancelBookingsAsync(new[] { booking1.Id, booking2.Id }, ProviderUserId);
+
+            Assert.Equal(BookingStatus.Cancelled, booking1.Status);
+            Assert.Equal(BookingStatus.Cancelled, booking2.Status);
+            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_EmptyCollection_ThrowsBadRequest()
+        {
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.CancelBookingsAsync(Array.Empty<Guid>(), ProviderUserId));
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_AnotherProvidersBooking_ThrowsForbidden()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(provider);
+
+            var booking = CreatePendingBooking();
+            booking.ProviderProfileId = Guid.NewGuid();
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking> { booking });
+
+            await Assert.ThrowsAsync<ForbiddenException>(() => sut.CancelBookingsAsync(new[] { booking.Id }, ProviderUserId));
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_NonCancellableStatus_ThrowsConflict()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(provider);
+
+            var booking = CreatePendingBooking();
+            booking.Status = BookingStatus.Completed;
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking> { booking });
+
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingsAsync(new[] { booking.Id }, ProviderUserId));
+        }
+
+        [Fact]
+        public async Task CancelBookingsAsync_MixedValidAndInvalid_ThrowsAndCancelsNone()
+        {
+            var provider = CreateApprovedProvider();
+            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(provider);
+
+            var booking = CreatePendingBooking();
+            booking.Status = BookingStatus.Completed;
+            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
+                .ReturnsAsync(new List<Booking> { booking });
+
+            await Assert.ThrowsAsync<NotFoundException>(() => sut.CancelBookingsAsync(new[] { booking.Id, Guid.NewGuid() }, ProviderUserId));
+
+            Assert.NotEqual(BookingStatus.Cancelled, booking.Status);
+        }
     }
 }

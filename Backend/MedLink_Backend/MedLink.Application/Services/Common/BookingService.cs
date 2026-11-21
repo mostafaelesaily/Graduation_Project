@@ -525,6 +525,83 @@ namespace MedLink.Application.Services.Common
                 bookingTime < a.EndTime);
         }
 
+        public async Task CancelBookingsAsync(IEnumerable<Guid> bookingIds, string userId)
+        {
+            var distinctIds = (bookingIds ?? Enumerable.Empty<Guid>()).Distinct().ToList();
+            if (distinctIds.Count == 0)
+                throw new BadRequestException("At least one booking id is required.");
+
+            var profile = await unitOfWork.Repository<ProviderProfile>().FindAsync(new ProviderProfileByUserSpecification(userId));
+            if (profile is null)
+                throw new ForbiddenException("You are not allowed to cancel these bookings.");
+
+            await unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var bookings = await unitOfWork.Repository<Booking>().GetAllAsync(new BookingsByIdsSpecification(distinctIds));
+                if (bookings.Count != distinctIds.Count)
+                    throw new NotFoundException("One or more bookings were not found.");
+
+                foreach (var booking in bookings)
+                {
+                    if (booking.ProviderProfileId != profile.Id)
+                        throw new ForbiddenException("You are not allowed to cancel these bookings.");
+
+                    if (booking.Status == BookingStatus.Completed)
+                        throw new ConflictException("Completed bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Rejected)
+                        throw new ConflictException("Rejected bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Expired)
+                        throw new ConflictException("Expired bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Cancelled)
+                        throw new ConflictException("Booking is already cancelled.");
+                }
+
+                foreach (var booking in bookings)
+                {
+                    booking.Status = BookingStatus.Cancelled;
+                    unitOfWork.Repository<Booking>().Update(booking);
+                }
+
+                await unitOfWork.SaveChangesAsync();
+                await unitOfWork.CommitTransactionAsync();
+
+                foreach (var booking in bookings)
+                {
+                    if (!string.IsNullOrWhiteSpace(booking.UserId))
+                    {
+                        await SafeNotifyAsync(
+                            booking.UserId,
+                            new CreateNotificationDto
+                            {
+                                UserId = booking.UserId,
+                                Title = "Booking Cancelled",
+                                Message = "Your booking has been cancelled."
+                            },
+                            booking.Id);
+                    }
+
+                    if (booking.ProviderProfile is not null && !string.IsNullOrWhiteSpace(booking.ProviderProfile.userId))
+                    {
+                        await SafeNotifyAsync(
+                            booking.ProviderProfile.userId,
+                            new CreateNotificationDto
+                            {
+                                UserId = booking.ProviderProfile.userId,
+                                Title = "Booking Cancelled",
+                                Message = "A booking has been cancelled."
+                            },
+                            booking.Id);
+                    }
+                }
+            }
+            catch
+            {
+                await unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
         private async Task SafeNotifyAsync(string recipientUserId, CreateNotificationDto notification, Guid bookingId)
         {
             try
