@@ -21,6 +21,7 @@ namespace MedLink.Domain.Entities.Common
         public ICollection<ProviderLocations> ProviderLocations { get; set; } = new List<ProviderLocations>();
         public ICollection<StoredFile> StoredFiles { get; set; } = new List<StoredFile>();
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+        public ICollection<ProviderAvailability> ProviderAvailabilities { get; set; } = new List<ProviderAvailability>();
 
     }
 }
