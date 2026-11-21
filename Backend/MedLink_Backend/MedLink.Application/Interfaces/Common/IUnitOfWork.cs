@@ -8,7 +8,7 @@ namespace MedLink.Application.Interfaces.Common
 
         Task<int> SaveChangesAsync();
 
-        Task BeginTransactionAsync();
+        Task BeginTransactionAsync(System.Data.IsolationLevel isolationLevel = System.Data.IsolationLevel.ReadCommitted);
 
         Task CommitTransactionAsync();
 

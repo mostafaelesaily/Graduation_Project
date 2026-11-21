@@ -167,5 +167,37 @@ namespace MedLink.Test.Services
             unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
             cacheServiceMock.Verify(c => c.RemoveAsync("Get_ProviderRequest_pageNum:"), Times.Once);
         }
+
+        [Fact]
+        public async Task GetAllProviderRequest_WithStatusAndSearch_ReturnsTotalCount()
+        {
+            var provider = CreateProvider(VerificationStatus.Approved);
+            provider.ServiceName = "Al-Noor Lab";
+            provider.user = new AppUser { Id = provider.userId, Email = "provider@test.com", PhoneNumber = "123" };
+            var providers = new List<ProviderProfile> { provider };
+            var dtos = new List<GetProviderRequestDto>
+            {
+                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = provider.ServiceName }
+            };
+            var storedFile = new StoredFile { Id = provider.LicenseFileId, FileName = "license.pdf", FilePath = "ProviderLicenses/license.pdf", FileType = "application/pdf" };
+
+            providerRepoMock
+                .Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(providers);
+            providerRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<ISpecification<ProviderProfile>>()))
+                .ReturnsAsync(1);
+            mapperMock
+                .Setup(m => m.Map<IReadOnlyList<GetProviderRequestDto>>(providers))
+                .Returns(dtos);
+            storedFileRepoMock
+                .Setup(r => r.GetByIdAsync(provider.LicenseFileId))
+                .ReturnsAsync(storedFile);
+
+            var result = await sut.GetAllProviderRequest(1, 10, "Al-Noor", VerificationStatus.Approved);
+
+            Assert.Equal(1, result.TotalCount);
+            Assert.Equal(VerificationStatus.Approved, dtos[0].Status);
+        }
     }
 }

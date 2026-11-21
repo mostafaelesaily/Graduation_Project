@@ -19,6 +19,7 @@ namespace MedLink.infrastructure.Data
         public DbSet<ProviderLocations> providerLocations { get; set; } 
         public DbSet<Notifications> notifications { get; set; }
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<ProviderAvailability> ProviderAvailabilities { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -58,10 +59,21 @@ namespace MedLink.infrastructure.Data
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => new { e.ProviderProfileId, e.BookingDate })
                     .IsUnique()
-                    .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+                    .HasFilter("([Status] <> 2 AND [Status] <> 4 AND [Status] <> 5)");
             });
             // Configure Booking entity End .
 
+            // Configure ProviderAvailability entity Start :
+            builder.Entity<ProviderAvailability>(entity =>
+            {
+                entity.ToTable("ProviderAvailabilities");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.DayOfWeek).IsRequired();
+                entity.Property(e => e.StartTime).IsRequired();
+                entity.Property(e => e.EndTime).IsRequired();
+                entity.HasIndex(e => new { e.ProviderProfileId, e.DayOfWeek, e.StartTime, e.EndTime }).IsUnique();
+            });
+            // Configure ProviderAvailability entity End .
             // Configure ProviderProfile entity Start :
             builder.Entity<ProviderProfile>(entity =>
             {
@@ -133,6 +145,13 @@ namespace MedLink.infrastructure.Data
                 .WithMany(p => p.Bookings)
                 .HasForeignKey(b => b.ProviderProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure one-to-many relationship between ProviderProfile and ProviderAvailability
+            builder.Entity<ProviderAvailability>()
+                .HasOne(a => a.ProviderProfile)
+                .WithMany(p => p.ProviderAvailabilities)
+                .HasForeignKey(a => a.ProviderProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
             // Relationship End .
 
 
