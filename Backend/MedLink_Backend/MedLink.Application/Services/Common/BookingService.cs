@@ -6,6 +6,7 @@ using MedLink.Application.DTOs.Common.NotificationDTOs;
 using MedLink.Application.Exceptions;
 using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.Bookings;
+using MedLink.Application.Specifications.ProviderProfiles;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using MedLink.Domain.Enums;
@@ -68,26 +69,81 @@ namespace MedLink.Application.Services.Common
             if (provider.verificationStatus != VerificationStatus.Approved)
                 throw new BadRequestException("Provider is not approved.");
 
-            var conflictSpec = new BookingConflictSpecification(dto.ProviderProfileId, dto.BookingDate);
-            var existing = await unitOfWork.Repository<Booking>().FindAsync(conflictSpec);
-            if (existing is not null)
-                throw new ConflictException("The requested booking slot is not available.");
-
-            var booking = new Booking
-            {
-                UserId = userId,
-                ProviderProfileId = dto.ProviderProfileId,
-                BookingDate = dto.BookingDate,
-                Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
+            Booking? booking = null;
 
             await unitOfWork.BeginTransactionAsync();
             try
             {
-                await unitOfWork.Repository<Booking>().AddAsync(booking);
-                await unitOfWork.SaveChangesAsync();
-                await unitOfWork.CommitTransactionAsync();
+                for (int attempt = 0; attempt < 2; attempt++)
+                {
+                    await ExpireOverdueBookingsAsync(dto.ProviderProfileId, dto.BookingDate, DateTime.UtcNow);
+
+                    // Determine whether an overdue Pending booking is still persisted.
+                    // If expiration failed because another operation changed it, this
+                    // lookup returns null and the subsequent conflict check determines
+                    // the actual persisted status.
+                    var overdueSpec = new OverduePendingBookingsSpecification(dto.ProviderProfileId, dto.BookingDate, DateTime.UtcNow);
+                    var overdueBooking = await unitOfWork.Repository<Booking>().FindAsync(overdueSpec);
+                    if (overdueBooking is not null)
+                    {
+                        if (attempt == 0)
+                        {
+                            continue;
+                        }
+
+                        throw new ConflictException("The requested booking slot is not available.");
+                    }
+
+                    if (!await IsWithinConfiguredAvailabilityAsync(dto.ProviderProfileId, dto.BookingDate))
+                    {
+                        throw new ConflictException("The requested booking time is outside provider availability.");
+                    }
+
+                    var conflictSpec = new BookingConflictSpecification(dto.ProviderProfileId, dto.BookingDate);
+                    var existing = await unitOfWork.Repository<Booking>().FindAsync(conflictSpec);
+                    if (existing is not null)
+                        throw new ConflictException("The requested booking slot is not available.");
+
+                    booking = new Booking
+                    {
+                        UserId = userId,
+                        ProviderProfileId = dto.ProviderProfileId,
+                        BookingDate = dto.BookingDate,
+                        Status = BookingStatus.Pending,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await unitOfWork.Repository<Booking>().AddAsync(booking);
+                    await unitOfWork.SaveChangesAsync();
+                    await unitOfWork.CommitTransactionAsync();
+
+                    await SafeNotifyAsync(
+                        userId,
+                        new CreateNotificationDto
+                        {
+                            UserId = userId,
+                            Title = "Booking Request Pending",
+                            Message = "Your booking request is pending provider approval."
+                        },
+                        booking.Id);
+
+                    if (!string.IsNullOrWhiteSpace(provider.userId))
+                    {
+                        await SafeNotifyAsync(
+                            provider.userId,
+                            new CreateNotificationDto
+                            {
+                                UserId = provider.userId,
+                                Title = "New Booking Request",
+                                Message = "A new booking request is pending your approval."
+                            },
+                            booking.Id);
+                    }
+
+                    return mapper.Map<GetBookingDto>(booking);
+                }
+
+                throw new ConflictException("The requested booking slot is not available.");
             }
             catch (DbUpdateException ex) when (IsBookingUniqueConstraintConflict(ex, booking))
             {
@@ -99,31 +155,6 @@ namespace MedLink.Application.Services.Common
                 await unitOfWork.RollbackTransactionAsync();
                 throw;
             }
-
-            await SafeNotifyAsync(
-                userId,
-                new CreateNotificationDto
-                {
-                    UserId = userId,
-                    Title = "Booking Request Pending",
-                    Message = "Your booking request is pending provider approval."
-                },
-                booking.Id);
-
-            if (!string.IsNullOrWhiteSpace(provider.userId))
-            {
-                await SafeNotifyAsync(
-                    provider.userId,
-                    new CreateNotificationDto
-                    {
-                        UserId = provider.userId,
-                        Title = "New Booking Request",
-                        Message = "A new booking request is pending your approval."
-                    },
-                    booking.Id);
-            }
-
-            return mapper.Map<GetBookingDto>(booking);
         }
 
         public async Task<GetBookingDto> ApproveBookingAsync(Guid bookingId, string userId)
@@ -135,6 +166,22 @@ namespace MedLink.Application.Services.Common
 
             if (booking.Status != BookingStatus.Pending)
                 throw new ConflictException("Only pending bookings can be approved.");
+
+            if (booking.CreatedAt.AddHours(8) <= DateTime.UtcNow)
+            {
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Ignore concurrency failures while recording expiration.
+                }
+
+                throw new ConflictException("Booking has expired.");
+            }
 
             booking.Status = BookingStatus.Confirmed;
             unitOfWork.Repository<Booking>().Update(booking);
@@ -169,6 +216,22 @@ namespace MedLink.Application.Services.Common
 
             if (booking.Status != BookingStatus.Pending)
                 throw new ConflictException("Only pending bookings can be rejected.");
+
+            if (booking.CreatedAt.AddHours(8) <= DateTime.UtcNow)
+            {
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Ignore concurrency failures while recording expiration.
+                }
+
+                throw new ConflictException("Booking has expired.");
+            }
 
             booking.Status = BookingStatus.Rejected;
             unitOfWork.Repository<Booking>().Update(booking);
@@ -248,7 +311,15 @@ namespace MedLink.Application.Services.Common
             };
         }
 
-        public async Task<PaginatedResultDto<GetBookingDto>> GetProviderBookingsAsync(Guid providerProfileId, string userId, int pageNumber, int pageSize)
+        public async Task<PaginatedResultDto<GetBookingDto>> GetProviderBookingsAsync(
+            Guid providerProfileId,
+            string userId,
+            int pageNumber,
+            int pageSize,
+            string? filter = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? search = null)
         {
             var provider = await unitOfWork.Repository<ProviderProfile>().GetByIdAsync(providerProfileId);
             if (provider is null)
@@ -257,10 +328,13 @@ namespace MedLink.Application.Services.Common
             if (provider.userId != userId && !await IsAdminAsync(userId))
                 throw new ForbiddenException("You are not allowed to access these bookings.");
 
-            var countSpec = new BookingsByProviderSpecification(providerProfileId);
+            if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
+                throw new BadRequestException("Start date cannot be later than end date.");
+
+            var countSpec = new BookingsByProviderSpecification(providerProfileId, filter, startDate, endDate, search);
             var totalCount = await unitOfWork.Repository<Booking>().CountAsync(countSpec);
 
-            var pagedSpec = new BookingsByProviderSpecification(providerProfileId, pageNumber, pageSize);
+            var pagedSpec = new BookingsByProviderSpecification(providerProfileId, pageNumber, pageSize, filter, startDate, endDate, search);
             var list = await unitOfWork.Repository<Booking>().GetAllAsync(pagedSpec);
 
             return new PaginatedResultDto<GetBookingDto>
@@ -269,6 +343,50 @@ namespace MedLink.Application.Services.Common
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
+            };
+        }
+
+        public async Task<PaginatedResultDto<GetBookingDto>> GetMyProviderBookingsAsync(
+            string userId,
+            int pageNumber,
+            int pageSize,
+            string? filter = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? search = null)
+        {
+            var profile = await unitOfWork.Repository<ProviderProfile>().FindAsync(new ProviderProfileByUserSpecification(userId));
+            if (profile is null)
+                throw new NotFoundException("Provider profile not found.");
+
+            return await GetProviderBookingsAsync(profile.Id, userId, pageNumber, pageSize, filter, startDate, endDate, search);
+        }
+
+        public async Task<ProviderBookingStatisticsDto> GetProviderBookingStatisticsAsync(string userId)
+        {
+            var profile = await unitOfWork.Repository<ProviderProfile>().FindAsync(new ProviderProfileByUserSpecification(userId));
+            if (profile is null)
+                throw new NotFoundException("Provider profile not found.");
+
+            var now = DateTime.UtcNow;
+            var todayStart = now.Date;
+            var sevenDaysEnd = todayStart.AddDays(7);
+
+            var todayCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderTodayBookingsSpecification(profile.Id, todayStart));
+            var nextSevenDaysCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderNextSevenDaysBookingsSpecification(profile.Id, now, sevenDaysEnd));
+            var pendingCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderPendingBookingsSpecification(profile.Id));
+            var cancelledCount = await unitOfWork.Repository<Booking>().CountAsync(
+                new ProviderCancelledBookingsSpecification(profile.Id));
+
+            return new ProviderBookingStatisticsDto
+            {
+                TodayCount = todayCount,
+                NextSevenDaysCount = nextSevenDaysCount,
+                PendingCount = pendingCount,
+                CancelledCount = cancelledCount
             };
         }
 
@@ -288,6 +406,9 @@ namespace MedLink.Application.Services.Common
 
             if (booking.Status == BookingStatus.Rejected)
                 throw new ConflictException("Rejected bookings cannot be cancelled.");
+
+            if (booking.Status == BookingStatus.Expired)
+                throw new ConflictException("Expired bookings cannot be cancelled.");
 
             if (booking.Status == BookingStatus.Cancelled)
                 throw new ConflictException("Booking is already cancelled.");
@@ -341,7 +462,145 @@ namespace MedLink.Application.Services.Common
 
             var spec = new BookingConflictSpecification(providerProfileId, bookingDate);
             var existing = await unitOfWork.Repository<Booking>().FindAsync(spec);
-            return existing is null;
+            if (existing is not null)
+                return false;
+
+            return await IsWithinConfiguredAvailabilityAsync(providerProfileId, bookingDate);
+        }
+
+        public async Task<int> ExpireOverdueBookingsAsync(
+            Guid? providerProfileId = null,
+            DateTime? bookingDate = null,
+            DateTime? asOfUtc = null)
+        {
+            var now = asOfUtc ?? DateTime.UtcNow;
+            var spec = new OverduePendingBookingsSpecification(providerProfileId, bookingDate, now);
+            var overdue = await unitOfWork.Repository<Booking>().GetAllAsync(spec);
+
+            if (overdue.Count == 0)
+                return 0;
+
+            int expiredCount = 0;
+
+            foreach (var booking in overdue)
+            {
+                if (booking.Status != BookingStatus.Pending)
+                    continue;
+
+                if (booking.CreatedAt.AddHours(8) > now)
+                    continue;
+
+                var originalStatus = booking.Status;
+                booking.Status = BookingStatus.Expired;
+                unitOfWork.Repository<Booking>().Update(booking);
+
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                    expiredCount++;
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    booking.Status = originalStatus;
+                }
+                catch (DbUpdateException)
+                {
+                    booking.Status = originalStatus;
+                }
+            }
+
+            return expiredCount;
+        }
+
+        private async Task<bool> IsWithinConfiguredAvailabilityAsync(Guid providerProfileId, DateTime bookingDate)
+        {
+            var availabilities = await unitOfWork.Repository<ProviderAvailability>().GetAllAsync(
+                new ProviderAvailabilitiesByProviderSpecification(providerProfileId));
+            if (availabilities.Count == 0)
+                return true;
+
+            var bookingTime = bookingDate.TimeOfDay;
+            return availabilities.Any(a =>
+                a.DayOfWeek == bookingDate.DayOfWeek &&
+                a.StartTime <= bookingTime &&
+                bookingTime < a.EndTime);
+        }
+
+        public async Task CancelBookingsAsync(IEnumerable<Guid> bookingIds, string userId)
+        {
+            var distinctIds = (bookingIds ?? Enumerable.Empty<Guid>()).Distinct().ToList();
+            if (distinctIds.Count == 0)
+                throw new BadRequestException("At least one booking id is required.");
+
+            var profile = await unitOfWork.Repository<ProviderProfile>().FindAsync(new ProviderProfileByUserSpecification(userId));
+            if (profile is null)
+                throw new ForbiddenException("You are not allowed to cancel these bookings.");
+
+            await unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var bookings = await unitOfWork.Repository<Booking>().GetAllAsync(new BookingsByIdsSpecification(distinctIds));
+                if (bookings.Count != distinctIds.Count)
+                    throw new NotFoundException("One or more bookings were not found.");
+
+                foreach (var booking in bookings)
+                {
+                    if (booking.ProviderProfileId != profile.Id)
+                        throw new ForbiddenException("You are not allowed to cancel these bookings.");
+
+                    if (booking.Status == BookingStatus.Completed)
+                        throw new ConflictException("Completed bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Rejected)
+                        throw new ConflictException("Rejected bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Expired)
+                        throw new ConflictException("Expired bookings cannot be cancelled.");
+                    if (booking.Status == BookingStatus.Cancelled)
+                        throw new ConflictException("Booking is already cancelled.");
+                }
+
+                foreach (var booking in bookings)
+                {
+                    booking.Status = BookingStatus.Cancelled;
+                    unitOfWork.Repository<Booking>().Update(booking);
+                }
+
+                await unitOfWork.SaveChangesAsync();
+                await unitOfWork.CommitTransactionAsync();
+
+                foreach (var booking in bookings)
+                {
+                    if (!string.IsNullOrWhiteSpace(booking.UserId))
+                    {
+                        await SafeNotifyAsync(
+                            booking.UserId,
+                            new CreateNotificationDto
+                            {
+                                UserId = booking.UserId,
+                                Title = "Booking Cancelled",
+                                Message = "Your booking has been cancelled."
+                            },
+                            booking.Id);
+                    }
+
+                    if (booking.ProviderProfile is not null && !string.IsNullOrWhiteSpace(booking.ProviderProfile.userId))
+                    {
+                        await SafeNotifyAsync(
+                            booking.ProviderProfile.userId,
+                            new CreateNotificationDto
+                            {
+                                UserId = booking.ProviderProfile.userId,
+                                Title = "Booking Cancelled",
+                                Message = "A booking has been cancelled."
+                            },
+                            booking.Id);
+                    }
+                }
+            }
+            catch
+            {
+                await unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
         private async Task SafeNotifyAsync(string recipientUserId, CreateNotificationDto notification, Guid bookingId)
@@ -381,7 +640,7 @@ namespace MedLink.Application.Services.Common
             return await userManager.IsInRoleAsync(user, Roles.Admin);
         }
 
-        private static bool IsBookingUniqueConstraintConflict(DbUpdateException exception, Booking attemptedBooking)
+        private static bool IsBookingUniqueConstraintConflict(DbUpdateException exception, Booking? attemptedBooking)
         {
             if (attemptedBooking is null)
                 return false;

@@ -61,7 +61,7 @@ namespace MedLink.infrastructure.Migrations
 
                     b.HasIndex("ProviderProfileId", "BookingDate")
                         .IsUnique()
-                        .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+                        .HasFilter("([Status] <> 2 AND [Status] <> 4 AND [Status] <> 5)");
 
                     b.ToTable("Bookings", "Shared");
                 });
@@ -289,6 +289,32 @@ namespace MedLink.infrastructure.Migrations
                     b.HasIndex("PatientId");
 
                     b.ToTable("MedicalRecords", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderAvailability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderProfileId", "DayOfWeek", "StartTime", "EndTime")
+                        .IsUnique();
+
+                    b.ToTable("ProviderAvailabilities", "Shared");
                 });
 
             modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderLocations", b =>
@@ -651,6 +677,17 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderAvailability", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
+                        .WithMany("ProviderAvailabilities")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+                });
+
             modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderLocations", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
@@ -754,6 +791,8 @@ namespace MedLink.infrastructure.Migrations
             modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderProfile", b =>
                 {
                     b.Navigation("Bookings");
+
+                    b.Navigation("ProviderAvailabilities");
 
                     b.Navigation("ProviderLocations");
 

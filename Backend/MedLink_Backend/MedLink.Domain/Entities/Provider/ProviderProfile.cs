@@ -22,6 +22,7 @@ namespace MedLink.Domain.Entities.Provider
         public ICollection<StoredFile> StoredFiles { get; set; } = new List<StoredFile>();
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public ICollection<ProviderService> ProviderServices { get; set; } = new List<ProviderService>();
+        public ICollection<ProviderAvailability> ProviderAvailabilities { get; set; } = new List<ProviderAvailability>();
 
     }
 }
