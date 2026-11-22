@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using MedLink.Application.DTOs.Common.identity;
-using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace MedLink.Application.Mapping
             opt => opt.Ignore())
            .ForMember(dest => dest.PhoneNumber,
             opt => opt.MapFrom(src => src.phoneNumber))
-           .ForMember(dest => dest.IsActice,
+           .ForMember(dest => dest.IsActive,
             opt => opt.MapFrom(src => false));
 
             CreateMap<RegisterProviderRequest, ProviderProfile>()

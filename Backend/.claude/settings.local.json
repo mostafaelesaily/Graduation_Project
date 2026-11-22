@@ -13,7 +13,12 @@
       "Bash(npx eslint:*)",
       "Bash(netstat -ano)",
       "Bash(npx next:*)",
-      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d \"MedLink_DB\" -Q \"SELECT COUNT\\(*\\) FROM Shared.storedFiles\" -h -1)"
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d \"MedLink_DB\" -Q \"SELECT COUNT\\(*\\) FROM Shared.storedFiles\" -h -1)",
+      "Bash(xargs grep:*)",
+      "Bash(timeout 10 dotnet run)",
+      "WebSearch",
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:aistudio.google.com)"
     ]
   }
 }

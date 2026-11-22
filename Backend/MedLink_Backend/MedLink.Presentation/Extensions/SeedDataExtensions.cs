@@ -1,4 +1,6 @@
-﻿using MedLink.infrastructure.Seed;
+﻿using MedLink.Domain.Entities.Common.Identity;
+using MedLink.infrastructure.Data;
+using MedLink.infrastructure.Seed;
 using Microsoft.AspNetCore.Identity;
 
 namespace MedLink.Presentation.Extensions
@@ -11,6 +13,10 @@ namespace MedLink.Presentation.Extensions
 
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             await RoleSeeder.SeedRoleAsync(roleManager);
+
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await MedicalSearchTestSeeder.SeedAsync(userManager, context);
         }
     }
 }

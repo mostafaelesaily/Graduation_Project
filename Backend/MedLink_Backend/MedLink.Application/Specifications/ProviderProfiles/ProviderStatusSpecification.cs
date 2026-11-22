@@ -1,4 +1,4 @@
-﻿using MedLink.Domain.Entities.Common;
+﻿using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,7 @@ namespace MedLink.Application.Specifications.ProviderProfiles
             )
         {
             AddInclude(provider => provider.user);
+            AddInclude(provider => provider.ProviderServices);
 
             ApplyPaging(
             (pageNum - 1) * pageSize,

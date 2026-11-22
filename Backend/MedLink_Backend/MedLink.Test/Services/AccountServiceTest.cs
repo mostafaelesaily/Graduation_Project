@@ -161,7 +161,7 @@ namespace MedLink.Test.Services
                 Token = "revoked-token",
                 CreatedOn = DateTime.UtcNow.AddDays(-1),
                 ExpiresOn = DateTime.UtcNow.AddDays(6),
-                revokedOn = DateTime.UtcNow
+                RevokedOn = DateTime.UtcNow
             });
             userManagerMock.Setup(x => x.Users).Returns(new List<AppUser> { user }.AsTestAsyncQueryable());
 
@@ -187,7 +187,7 @@ namespace MedLink.Test.Services
 
             var result = await sut.HandleRefreshTokenAsync(new GenrateRefreshToken { Token = "valid-token" });
 
-            Assert.NotNull(oldToken.revokedOn);
+            Assert.NotNull(oldToken.RevokedOn);
             Assert.False(string.IsNullOrWhiteSpace(result.AccessToken));
             Assert.False(string.IsNullOrWhiteSpace(result.RefreshToken));
             Assert.NotEqual("valid-token", result.RefreshToken);
@@ -366,7 +366,7 @@ namespace MedLink.Test.Services
 
             await sut.Logout(user.Id);
 
-            Assert.All(user.RefreshTokens, t => Assert.NotNull(t.revokedOn));
+            Assert.All(user.RefreshTokens, t => Assert.NotNull(t.RevokedOn));
             userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
         }
 
