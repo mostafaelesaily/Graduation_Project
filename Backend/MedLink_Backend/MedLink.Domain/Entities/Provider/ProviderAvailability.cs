@@ -1,6 +1,6 @@
 using System;
 
-namespace MedLink.Domain.Entities.Common
+namespace MedLink.Domain.Entities.Provider
 {
     public class ProviderAvailability
     {

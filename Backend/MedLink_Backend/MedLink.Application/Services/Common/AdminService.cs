@@ -6,6 +6,7 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.ProviderProfiles;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using System;
@@ -107,7 +108,7 @@ namespace MedLink.Application.Services.Common
             var user = await unitOfWork.Repository<AppUser>().GetByIdAsync(provider.userId);
             if (user != null)
             {
-                user.IsActice = true;
+                user.IsActive = true;
                 unitOfWork.Repository<AppUser>().Update(user);
             }
 

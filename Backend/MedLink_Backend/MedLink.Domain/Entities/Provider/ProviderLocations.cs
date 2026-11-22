@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MedLink.Domain.Entities.Common
+namespace MedLink.Domain.Entities.Provider
 {
     public class ProviderLocations
     {

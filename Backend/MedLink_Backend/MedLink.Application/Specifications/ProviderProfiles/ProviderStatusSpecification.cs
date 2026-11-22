@@ -1,4 +1,4 @@
-﻿using MedLink.Domain.Entities.Common;
+﻿using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using System;
 
@@ -16,11 +16,13 @@ namespace MedLink.Application.Specifications.ProviderProfiles
                     ? provider.verificationStatus == status.Value
                     : true) &&
                 (string.IsNullOrWhiteSpace(search) ||
-                 provider.ServiceName.Contains(search) ||
+                 provider.ProviderServices.Any(service => service.ServiceName.Contains(search)) ||
                  (provider.user != null && provider.user.Email != null && provider.user.Email.Contains(search)) ||
                  (provider.user != null && provider.user.UserName != null && provider.user.UserName.Contains(search))))
         {
             AddInclude(provider => provider.user);
+            AddInclude(provider => provider.ProviderServices);
+
             ApplyPaging((pageNum - 1) * pageSize, pageSize);
         }
     }

@@ -5,6 +5,7 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.ProviderProfiles;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using System;

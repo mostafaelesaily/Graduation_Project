@@ -10,14 +10,9 @@ namespace MedLink.Domain.Entities.Common
     {
         public string Token { get; set; }
         public DateTime CreatedOn { get; set; }
-
         public DateTime ExpiresOn { get; set; }
-
-        public DateTime? revokedOn { get; set; }
-
-        public bool isExpired => DateTime.UtcNow >= ExpiresOn;
-
-        public bool isActive => revokedOn == null && !isExpired;
-
+        public DateTime? RevokedOn { get; set; }
+        public bool IsExpired => DateTime.UtcNow >= ExpiresOn;
+        public bool IsActive => RevokedOn == null && !IsExpired;
     }
 }

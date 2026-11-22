@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedLink.Domain.Entities.Provider;
+using System;
 using System.Collections.Generic;
 using System.Text;
 

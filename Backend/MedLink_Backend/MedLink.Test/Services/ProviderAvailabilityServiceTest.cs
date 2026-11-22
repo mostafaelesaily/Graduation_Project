@@ -5,6 +5,7 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Services.Common;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -67,7 +68,6 @@ namespace MedLink.Test.Services
             {
                 Id = ProviderId,
                 userId = ProviderUserId,
-                ServiceName = "Approved Provider",
                 verificationStatus = VerificationStatus.Approved
             };
         }

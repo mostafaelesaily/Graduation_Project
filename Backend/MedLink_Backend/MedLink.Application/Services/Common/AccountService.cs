@@ -16,6 +16,7 @@ using System.Security.Cryptography;
 using System.Text;
 using MedLink.Domain.Enums;
 using MedLink.Application.DTOs.Common.identityDTOs;
+using MedLink.Domain.Entities.Provider;
 
 namespace MedLink.Application.Services.Common
 {
@@ -99,9 +100,9 @@ namespace MedLink.Application.Services.Common
             var user = await userManager.Users.FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == genrateRefreshTokenDto.Token));
             if (user == null) throw new UnauthorizedException("Invalid token");
             var refreshToken = user.RefreshTokens.FirstOrDefault(t => t.Token == genrateRefreshTokenDto.Token);
-            if (refreshToken == null || refreshToken.ExpiresOn < DateTime.UtcNow || refreshToken.revokedOn != null)
+            if (refreshToken == null || refreshToken.ExpiresOn < DateTime.UtcNow || refreshToken.RevokedOn != null)
             { throw new UnauthorizedException("Invalid token"); }
-            refreshToken.revokedOn = DateTime.UtcNow;
+            refreshToken.RevokedOn = DateTime.UtcNow;
             var newAccessToken = await GenrateAccessToken(user);
             var newRefreshToken = await GenrateRefreshToken();
             user.RefreshTokens.Add(newRefreshToken);
@@ -133,7 +134,7 @@ namespace MedLink.Application.Services.Common
                 logger.LogWarning("Login attempt failed for user with email: {Email}. Email not confirmed.", loginDto.Email);
                 throw new UnauthorizedException("Email not confirmed. Please confirm your email before logging in.");
             }
-            if (!user.IsActice)
+            if (!user.IsActive)
             {
                 logger.LogWarning("Login attempt failed for user with email: {Email}. Account is not active.", loginDto.Email);
                 throw new UnauthorizedException("Your account is not active yet. Please wait for admin approval.");
@@ -215,7 +216,7 @@ namespace MedLink.Application.Services.Common
             }
             foreach (var refreshToken in user.RefreshTokens)
             {
-                refreshToken.revokedOn = DateTime.UtcNow;
+                refreshToken.RevokedOn = DateTime.UtcNow;
             }
             var result = await userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -385,7 +386,7 @@ namespace MedLink.Application.Services.Common
                     UserName = googleUser.Email,
                     Email = googleUser.Email,
                     EmailConfirmed = true,
-                    IsActice = true
+                    IsActive = true
                 };
 
                 var createResult = await userManager.CreateAsync(user);
@@ -417,7 +418,7 @@ namespace MedLink.Application.Services.Common
                 logger.LogInformation("New user created via Google sign-in with email: {Email}", googleUser.Email);
             }
 
-            if (!user.IsActice)
+            if (!user.IsActive)
             {
                 logger.LogWarning("Google sign-in blocked for inactive account: {Email}", user.Email);
                 throw new UnauthorizedException("Your account is not active yet. Please wait for admin approval.");

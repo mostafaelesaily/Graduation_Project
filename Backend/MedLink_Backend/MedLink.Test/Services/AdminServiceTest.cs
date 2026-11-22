@@ -6,6 +6,7 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Services.Common;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -53,7 +54,10 @@ namespace MedLink.Test.Services
             {
                 Id = Guid.NewGuid(),
                 userId = "user-1",
-                ServiceName = "Al-Noor Lab",
+                ProviderServices = new List<ProviderService>
+                {
+                    new() { ServiceName = "Al-Noor Lab", Description = "Lab services" }
+                },
                 verificationStatus = status
             };
         }
@@ -77,7 +81,7 @@ namespace MedLink.Test.Services
             var providers = new List<ProviderProfile> { provider };
             var dtos = new List<GetProviderRequestDto>
             {
-                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = provider.ServiceName }
+                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = "Al-Noor Lab" }
             };
             var storedFile = new StoredFile { Id = provider.LicenseFileId, FileName = "license.pdf", FilePath = "ProviderLicenses/license.pdf", FileType = "application/pdf" };
 
@@ -114,7 +118,7 @@ namespace MedLink.Test.Services
         public async Task AcceptProviderAsync_ProviderFound_ApprovesProviderAndActivatesUser()
         {
             var provider = CreateProvider();
-            var user = new AppUser { Id = provider.userId, IsActice = false };
+            var user = new AppUser { Id = provider.userId, IsActive = false };
 
             providerRepoMock.Setup(r => r.GetByIdAsync(provider.Id)).ReturnsAsync(provider);
             userRepoMock.Setup(r => r.GetByIdAsync(provider.userId)).ReturnsAsync(user);
@@ -122,7 +126,7 @@ namespace MedLink.Test.Services
             await sut.AcceptProviderAsync(provider.Id);
 
             Assert.Equal(VerificationStatus.Approved, provider.verificationStatus);
-            Assert.True(user.IsActice);
+            Assert.True(user.IsActive);
             providerRepoMock.Verify(r => r.Update(provider), Times.Once);
             userRepoMock.Verify(r => r.Update(user), Times.Once);
             unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
@@ -172,12 +176,11 @@ namespace MedLink.Test.Services
         public async Task GetAllProviderRequest_WithStatusAndSearch_ReturnsTotalCount()
         {
             var provider = CreateProvider(VerificationStatus.Approved);
-            provider.ServiceName = "Al-Noor Lab";
             provider.user = new AppUser { Id = provider.userId, Email = "provider@test.com", PhoneNumber = "123" };
             var providers = new List<ProviderProfile> { provider };
             var dtos = new List<GetProviderRequestDto>
             {
-                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = provider.ServiceName }
+                new GetProviderRequestDto { ProviderId = provider.Id, ServiceName = "Al-Noor Lab" }
             };
             var storedFile = new StoredFile { Id = provider.LicenseFileId, FileName = "license.pdf", FilePath = "ProviderLicenses/license.pdf", FileType = "application/pdf" };
 
@@ -251,7 +254,7 @@ namespace MedLink.Test.Services
         public async Task GetAllProviderRequest_SearchWithStatus_PreservesPagination()
         {
             var provider = CreateProvider(VerificationStatus.Pending);
-            provider.ServiceName = "Searchable Provider";
+            provider.ProviderServices.First().ServiceName = "Searchable Provider";
             providerRepoMock
                 .Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderProfile>>()))
                 .ReturnsAsync(new List<ProviderProfile> { provider });
