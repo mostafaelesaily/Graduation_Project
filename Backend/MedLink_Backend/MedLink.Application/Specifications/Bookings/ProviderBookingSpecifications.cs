@@ -4,34 +4,8 @@ using System;
 
 namespace MedLink.Application.Specifications.Bookings
 {
-    public class BookingConflictSpecification : BaseSpecification<Booking>
-    {
-        public BookingConflictSpecification(Guid providerProfileId, DateTime bookingDate, DateTime? asOfUtc = null)
-            : base(b => b.ProviderProfileId == providerProfileId
-                        && b.BookingDate == bookingDate
-                        && b.Status != BookingStatus.Cancelled
-                        && b.Status != BookingStatus.Rejected
-                        && b.Status != BookingStatus.Expired
-                        && !(b.Status == BookingStatus.Pending
-                             && b.CreatedAt <= (asOfUtc ?? DateTime.UtcNow).AddHours(-8)))
-        {
-        }
-    }
-
-    public class OverduePendingBookingsSpecification : BaseSpecification<Booking>
-    {
-        public OverduePendingBookingsSpecification(
-            Guid? providerProfileId = null,
-            DateTime? bookingDate = null,
-            DateTime? asOfUtc = null)
-            : base(b => b.Status == BookingStatus.Pending
-                        && (!providerProfileId.HasValue || b.ProviderProfileId == providerProfileId.Value)
-                        && (!bookingDate.HasValue || b.BookingDate == bookingDate.Value)
-                        && b.CreatedAt <= (asOfUtc ?? DateTime.UtcNow).AddHours(-8))
-        {
-        }
-    }
-
+    // Used by the provider booking-management flow: listing/searching a
+    // provider's own bookings, bulk operations, and dashboard statistics.
     public class ProviderTodayBookingsSpecification : BaseSpecification<Booking>
     {
         public ProviderTodayBookingsSpecification(Guid providerProfileId, DateTime dayStart)
@@ -69,22 +43,6 @@ namespace MedLink.Application.Specifications.Bookings
             : base(b => b.ProviderProfileId == providerProfileId
                         && b.Status == BookingStatus.Cancelled)
         {
-        }
-    }
-
-    public class BookingsByUserSpecification : BaseSpecification<Booking>
-    {
-        public BookingsByUserSpecification(string userId)
-            : base(b => b.UserId == userId)
-        {
-            AddOrderByDescending(b => b.CreatedAt);
-        }
-
-        public BookingsByUserSpecification(string userId, int pageNumber, int pageSize)
-            : base(b => b.UserId == userId)
-        {
-            AddOrderByDescending(b => b.CreatedAt);
-            ApplyPaging((pageNumber - 1) * pageSize, pageSize);
         }
     }
 
@@ -141,26 +99,6 @@ namespace MedLink.Application.Specifications.Bookings
             AddInclude(b => b.ProviderProfile);
             AddOrderByDescending(b => b.CreatedAt);
             ApplyPaging((pageNumber - 1) * pageSize, pageSize);
-        }
-    }
-
-    public class BookingsByIdsSpecification : BaseSpecification<Booking>
-    {
-        public BookingsByIdsSpecification(IEnumerable<Guid> bookingIds)
-            : base(b => bookingIds.Contains(b.Id))
-        {
-            AddInclude(b => b.User);
-            AddInclude(b => b.ProviderProfile);
-        }
-    }
-
-    public class BookingByIdSpecification : BaseSpecification<Booking>
-    {
-        public BookingByIdSpecification(Guid bookingId)
-            : base(b => b.Id == bookingId)
-        {
-            AddInclude(b => b.User);
-            AddInclude(b => b.ProviderProfile);
         }
     }
 }
