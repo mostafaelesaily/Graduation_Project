@@ -17,24 +17,25 @@ using Xunit;
 
 namespace MedLink.Test.Services
 {
-    public class BookingServiceTest
+    public class PatientBookingServiceTest
     {
         private readonly Mock<IMapper> mapperMock = new();
-        private readonly Mock<ILogger<BookingService>> loggerMock = new();
+        private readonly Mock<ILogger<PatientBookingService>> loggerMock = new();
         private readonly Mock<UserManager<AppUser>> userManagerMock;
         private readonly Mock<INotificationService> notificationServiceMock = new();
+        private readonly Mock<ICacheService> cacheServiceMock = new();
         private readonly Mock<IUnitOfWork> unitOfWorkMock = new();
         private readonly Mock<IGenaricRepo<Booking>> bookingRepositoryMock = new();
         private readonly Mock<IGenaricRepo<ProviderProfile>> providerRepositoryMock = new();
         private readonly Mock<IGenaricRepo<ProviderAvailability>> availabilityRepositoryMock = new();
 
-        private readonly BookingService sut;
+        private readonly PatientBookingService sut;
 
         private static readonly Guid ProviderId = Guid.NewGuid();
         private const string ProviderUserId = "provider-user";
         private const string PatientId = "patient-user";
 
-        public BookingServiceTest()
+        public PatientBookingServiceTest()
         {
             var storeMock = new Mock<IUserStore<AppUser>>();
             userManagerMock = new Mock<UserManager<AppUser>>(
@@ -51,6 +52,8 @@ namespace MedLink.Test.Services
             unitOfWorkMock.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
             unitOfWorkMock.Setup(u => u.CommitTransactionAsync()).Returns(Task.CompletedTask);
             unitOfWorkMock.Setup(u => u.RollbackTransactionAsync()).Returns(Task.CompletedTask);
+
+            cacheServiceMock.Setup(c => c.RemoveAsync(It.IsAny<string>())).Returns(Task.CompletedTask);
 
             mapperMock.Setup(m => m.Map<GetBookingDto>(It.IsAny<Booking>()))
                 .Returns((Booking booking) => new GetBookingDto
@@ -69,11 +72,12 @@ namespace MedLink.Test.Services
             userManagerMock.Setup(x => x.IsInRoleAsync(It.IsAny<AppUser>(), It.IsAny<string>()))
                 .ReturnsAsync(false);
 
-            sut = new BookingService(
+            sut = new PatientBookingService(
                 unitOfWorkMock.Object,
                 mapperMock.Object,
                 notificationServiceMock.Object,
                 userManagerMock.Object,
+                cacheServiceMock.Object,
                 loggerMock.Object);
         }
 
@@ -101,7 +105,7 @@ namespace MedLink.Test.Services
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ApprovedProviderAvailableSlot_ReturnsPendingStatus()
+        public async Task BookAsync_ApprovedProviderAvailableSlot_ReturnsPendingStatus()
         {
             var dto = new CreateBookingDto
             {
@@ -114,7 +118,7 @@ namespace MedLink.Test.Services
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync((Booking)null);
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
             notificationServiceMock.Verify(n => n.SendToUserAsync(PatientId, It.Is<CreateNotificationDto>(d => d.Title == "Booking Request Pending")), Times.Once);
@@ -123,7 +127,7 @@ namespace MedLink.Test.Services
         }
 
         [Fact]
-        public async Task CreateBookingAsync_UnapprovedProvider_ThrowsBadRequest()
+        public async Task BookAsync_UnapprovedProvider_ThrowsBadRequest()
         {
             var provider = CreateApprovedProvider();
             provider.verificationStatus = VerificationStatus.Pending;
@@ -137,12 +141,12 @@ namespace MedLink.Test.Services
             providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
                 .ReturnsAsync(provider);
 
-            await Assert.ThrowsAsync<BadRequestException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.BookAsync(dto, PatientId));
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ConflictingSlot_ThrowsConflict()
+        public async Task BookAsync_ConflictingSlot_ThrowsConflict()
         {
             var dto = new CreateBookingDto
             {
@@ -155,12 +159,12 @@ namespace MedLink.Test.Services
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(new Booking { Id = Guid.NewGuid(), Status = BookingStatus.Pending });
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.BookAsync(dto, PatientId));
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_RejectedBookingAtSameTimestamp_DoesNotBlockNewBooking()
+        public async Task BookAsync_RejectedBookingAtSameTimestamp_DoesNotBlockNewBooking()
         {
             var dto = new CreateBookingDto
             {
@@ -188,13 +192,13 @@ namespace MedLink.Test.Services
 
             // With the consistency fix, a rejected exact-timestamp booking is not a conflict.
             // The service still starts a transaction and creates a pending booking.
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_EmptyProviderId_ThrowsBadRequest()
+        public async Task BookAsync_EmptyProviderId_ThrowsBadRequest()
         {
             var dto = new CreateBookingDto
             {
@@ -202,11 +206,11 @@ namespace MedLink.Test.Services
                 BookingDate = DateTime.UtcNow.AddDays(1)
             };
 
-            await Assert.ThrowsAsync<BadRequestException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<BadRequestException>(() => sut.BookAsync(dto, PatientId));
         }
 
         [Fact]
-        public async Task CreateBookingAsync_DatabaseUniqueConflictWithEmptyEntries_ThrowsOriginalException()
+        public async Task BookAsync_DatabaseUniqueConflictWithEmptyEntries_ThrowsOriginalException()
         {
             var dto = new CreateBookingDto
             {
@@ -224,13 +228,13 @@ namespace MedLink.Test.Services
                 new Exception("IX_Bookings_ProviderProfileId_BookingDate duplicate"));
             unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ThrowsAsync(dbException);
 
-            await Assert.ThrowsAsync<DbUpdateException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<DbUpdateException>(() => sut.BookAsync(dto, PatientId));
             unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(), Times.Once);
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_UnrelatedDatabaseFailure_ThrowsOriginalException()
+        public async Task BookAsync_UnrelatedDatabaseFailure_ThrowsOriginalException()
         {
             var dto = new CreateBookingDto
             {
@@ -246,82 +250,12 @@ namespace MedLink.Test.Services
             var dbException = new DbUpdateException("unrelated", new Exception("some other failure"));
             unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ThrowsAsync(dbException);
 
-            var thrown = await Assert.ThrowsAsync<DbUpdateException>(() => sut.CreateBookingAsync(dto, PatientId));
+            var thrown = await Assert.ThrowsAsync<DbUpdateException>(() => sut.BookAsync(dto, PatientId));
             Assert.Same(dbException, thrown);
         }
 
         [Fact]
-        public async Task ApproveBookingAsync_OwningProvider_PersistsConfirmedAndNotifiesPatient()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            var result = await sut.ApproveBookingAsync(booking.Id, ProviderUserId);
-
-            Assert.Equal(BookingStatus.Confirmed, result.Status);
-            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
-            notificationServiceMock.Verify(n => n.SendToUserAsync(PatientId, It.Is<CreateNotificationDto>(d => d.Title == "Booking Confirmed")), Times.Once);
-        }
-
-        [Fact]
-        public async Task ApproveBookingAsync_NonOwner_ThrowsForbidden()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.ApproveBookingAsync(booking.Id, "other-provider"));
-            notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task ApproveBookingAsync_PatientCannotApprove()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.ApproveBookingAsync(booking.Id, PatientId));
-        }
-
-        [Fact]
-        public async Task ApproveBookingAsync_AlreadyConfirmed_DoesNotNotify()
-        {
-            var booking = CreatePendingBooking();
-            booking.Status = BookingStatus.Confirmed;
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
-            notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task RejectBookingAsync_OwningProvider_PersistsRejectedAndNotifiesPatient()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await sut.RejectBookingAsync(booking.Id, ProviderUserId);
-
-            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
-            notificationServiceMock.Verify(n => n.SendToUserAsync(PatientId, It.Is<CreateNotificationDto>(d => d.Title == "Booking Rejected")), Times.Once);
-        }
-
-        [Fact]
-        public async Task RejectBookingAsync_NonOwner_ThrowsForbidden()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.RejectBookingAsync(booking.Id, "other-provider"));
-        }
-
-        [Fact]
-        public async Task CreateBookingAsync_NotificationFailureAfterCommit_StillReturnsPendingBooking()
+        public async Task BookAsync_NotificationFailureAfterCommit_StillReturnsPendingBooking()
         {
             var dto = new CreateBookingDto
             {
@@ -337,27 +271,13 @@ namespace MedLink.Test.Services
             notificationServiceMock.Setup(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()))
                 .ThrowsAsync(new Exception("signalr down"));
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
         }
 
         [Fact]
-        public async Task ApproveBookingAsync_NotificationFailureAfterCommit_StillReturnsConfirmedBooking()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-            notificationServiceMock.Setup(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()))
-                .ThrowsAsync(new Exception("signalr down"));
-
-            var result = await sut.ApproveBookingAsync(booking.Id, ProviderUserId);
-
-            Assert.Equal(BookingStatus.Confirmed, result.Status);
-        }
-
-        [Fact]
-        public async Task ApproveBookingAsync_ConcurrencyConflict_ThrowsConflictAndDoesNotNotify()
+        public async Task CancelMyBookingAsync_ConcurrencyConflict_ThrowsConflictAndDoesNotNotify()
         {
             var booking = CreatePendingBooking();
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
@@ -365,74 +285,47 @@ namespace MedLink.Test.Services
             unitOfWorkMock.Setup(u => u.SaveChangesAsync())
                 .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
-            unitOfWorkMock.Verify(u => u.RollbackTransactionAsync(), Times.Never);
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelMyBookingAsync(booking.Id, PatientId));
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task RejectBookingAsync_ConcurrencyConflict_ThrowsConflictAndDoesNotNotify()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
-                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.RejectBookingAsync(booking.Id, ProviderUserId));
-            notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task CancelBookingAsync_ConcurrencyConflict_ThrowsConflictAndDoesNotNotify()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
-                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
-            notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task CancelBookingAsync_CompletedBooking_ThrowsConflict()
+        public async Task CancelMyBookingAsync_CompletedBooking_ThrowsConflict()
         {
             var booking = CreatePendingBooking();
             booking.Status = BookingStatus.Completed;
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelMyBookingAsync(booking.Id, PatientId));
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task CancelBookingAsync_RejectedBooking_ThrowsConflict()
+        public async Task CancelMyBookingAsync_RejectedBooking_ThrowsConflict()
         {
             var booking = CreatePendingBooking();
             booking.Status = BookingStatus.Rejected;
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelMyBookingAsync(booking.Id, PatientId));
         }
 
         [Fact]
-        public async Task CancelBookingAsync_CancelledBooking_ThrowsConflictAndNoNotifications()
+        public async Task CancelMyBookingAsync_CancelledBooking_ThrowsConflictAndNoNotifications()
         {
             var booking = CreatePendingBooking();
             booking.Status = BookingStatus.Cancelled;
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelMyBookingAsync(booking.Id, PatientId));
             notificationServiceMock.Verify(n => n.SendToUserAsync(It.IsAny<string>(), It.IsAny<CreateNotificationDto>()), Times.Never);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_PatientNotificationFailure_DoesNotPreventProviderNotification()
+        public async Task BookAsync_PatientNotificationFailure_DoesNotPreventProviderNotification()
         {
             var dto = new CreateBookingDto
             {
@@ -452,7 +345,7 @@ namespace MedLink.Test.Services
                 .Setup(n => n.SendToUserAsync(ProviderUserId, It.IsAny<CreateNotificationDto>()))
                 .Returns(Task.CompletedTask);
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
             notificationServiceMock.Verify(n => n.SendToUserAsync(PatientId, It.IsAny<CreateNotificationDto>()), Times.Once);
@@ -460,7 +353,7 @@ namespace MedLink.Test.Services
         }
 
         [Fact]
-        public async Task CancelBookingAsync_PatientNotificationFailure_DoesNotPreventProviderNotification()
+        public async Task CancelMyBookingAsync_PatientNotificationFailure_DoesNotPreventProviderNotification()
         {
             var booking = CreatePendingBooking();
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
@@ -473,14 +366,14 @@ namespace MedLink.Test.Services
                 .Setup(n => n.SendToUserAsync(ProviderUserId, It.IsAny<CreateNotificationDto>()))
                 .Returns(Task.CompletedTask);
 
-            await sut.CancelBookingAsync(booking.Id, PatientId);
+            await sut.CancelMyBookingAsync(booking.Id, PatientId);
 
             notificationServiceMock.Verify(n => n.SendToUserAsync(PatientId, It.IsAny<CreateNotificationDto>()), Times.Once);
             notificationServiceMock.Verify(n => n.SendToUserAsync(ProviderUserId, It.IsAny<CreateNotificationDto>()), Times.Once);
         }
 
         [Fact]
-        public async Task UpdateNotesAsync_NullNotes_PreservesExistingNotes()
+        public async Task UpdateMyBookingNotesAsync_NullNotes_PreservesExistingNotes()
         {
             var booking = CreatePendingBooking();
             booking.UserId = PatientId;
@@ -488,36 +381,20 @@ namespace MedLink.Test.Services
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await sut.UpdateNotesAsync(booking.Id, new UpdateBookingDto { Notes = null }, PatientId);
+            await sut.UpdateMyBookingNotesAsync(booking.Id, new UpdateBookingDto { Notes = null }, PatientId);
 
             Assert.Equal("existing note", booking.Notes);
         }
 
         [Fact]
-        public async Task GetBookingAsync_AnotherPatientsBooking_ThrowsForbidden()
+        public async Task GetMyBookingByIdAsync_AnotherPatientsBooking_ThrowsForbidden()
         {
             var booking = CreatePendingBooking();
             booking.UserId = "other-patient";
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.GetBookingAsync(booking.Id, PatientId));
-        }
-
-        [Fact]
-        public async Task GetProviderBookingsAsync_AnotherProvidersBookings_ThrowsForbidden()
-        {
-            var otherProvider = new ProviderProfile
-            {
-                Id = ProviderId,
-                userId = "other-provider",
-                verificationStatus = VerificationStatus.Approved
-            };
-
-            providerRepositoryMock.Setup(r => r.GetByIdAsync(ProviderId))
-                .ReturnsAsync(otherProvider);
-
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.GetProviderBookingsAsync(ProviderId, PatientId, 1, 10));
+            await Assert.ThrowsAsync<ForbiddenException>(() => sut.GetMyBookingByIdAsync(booking.Id, PatientId));
         }
 
         [Fact]
@@ -536,32 +413,7 @@ namespace MedLink.Test.Services
         }
 
         [Fact]
-        public async Task ApproveBookingAsync_BeforeDeadline_BecomesConfirmed()
-        {
-            var booking = CreatePendingBooking();
-            booking.CreatedAt = DateTime.UtcNow;
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            var result = await sut.ApproveBookingAsync(booking.Id, ProviderUserId);
-
-            Assert.Equal(BookingStatus.Confirmed, result.Status);
-        }
-
-        [Fact]
-        public async Task ApproveBookingAsync_AfterDeadline_ThrowsConflictAndMarksExpired()
-        {
-            var booking = CreatePendingBooking();
-            booking.CreatedAt = DateTime.UtcNow.AddHours(-9);
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
-            Assert.Equal(BookingStatus.Expired, booking.Status);
-        }
-
-        [Fact]
-        public async Task CreateBookingAsync_ExpiredPendingSlot_DoesNotBlockNewBooking()
+        public async Task BookAsync_ExpiredPendingSlot_DoesNotBlockNewBooking()
         {
             var dto = new CreateBookingDto
             {
@@ -592,7 +444,7 @@ namespace MedLink.Test.Services
                     return Task.FromResult(matches ? expiredBooking : null);
                 });
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
         }
@@ -657,30 +509,18 @@ namespace MedLink.Test.Services
         }
 
         [Fact]
-        public async Task CancelBookingAsync_ExpiredBooking_ThrowsConflict()
+        public async Task CancelMyBookingAsync_ExpiredBooking_ThrowsConflict()
         {
             var booking = CreatePendingBooking();
             booking.Status = BookingStatus.Expired;
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(booking);
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingAsync(booking.Id, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelMyBookingAsync(booking.Id, PatientId));
         }
 
         [Fact]
-        public async Task ApproveBookingAsync_ConcurrencyConflict_ThrowsConflict()
-        {
-            var booking = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(booking);
-            unitOfWorkMock.Setup(u => u.SaveChangesAsync())
-                .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.ApproveBookingAsync(booking.Id, ProviderUserId));
-        }
-
-        [Fact]
-        public async Task CreateBookingAsync_FailedExpirationThenSuccessfulRetry_ReturnsPendingStatus()
+        public async Task BookAsync_FailedExpirationThenSuccessfulRetry_ReturnsPendingStatus()
         {
             var dto = new CreateBookingDto
             {
@@ -724,14 +564,14 @@ namespace MedLink.Test.Services
                     return Task.FromResult(1);
                 });
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
             Assert.True(saveCallCount >= 2);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_FailedExpirationRemainsSlotBlocking_ThrowsConflict()
+        public async Task BookAsync_FailedExpirationRemainsSlotBlocking_ThrowsConflict()
         {
             var dto = new CreateBookingDto
             {
@@ -760,11 +600,11 @@ namespace MedLink.Test.Services
             unitOfWorkMock.Setup(u => u.SaveChangesAsync())
                 .ThrowsAsync(new DbUpdateConcurrencyException("concurrency conflict"));
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.BookAsync(dto, PatientId));
         }
 
         [Fact]
-        public async Task CreateBookingAsync_NeverConfiguredAvailability_AllowsBooking()
+        public async Task BookAsync_NeverConfiguredAvailability_AllowsBooking()
         {
             var dto = new CreateBookingDto
             {
@@ -779,13 +619,13 @@ namespace MedLink.Test.Services
             availabilityRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<ProviderAvailability>>()))
                 .ReturnsAsync(new List<ProviderAvailability>());
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ConfiguredAvailabilityInsideInterval_AllowsBooking()
+        public async Task BookAsync_ConfiguredAvailabilityInsideInterval_AllowsBooking()
         {
             var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(10);
             var dto = new CreateBookingDto
@@ -804,13 +644,13 @@ namespace MedLink.Test.Services
                     new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = bookingDate.DayOfWeek, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(12) }
                 });
 
-            var result = await sut.CreateBookingAsync(dto, PatientId);
+            var result = await sut.BookAsync(dto, PatientId);
 
             Assert.Equal(BookingStatus.Pending, result.Status);
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ConfiguredAvailabilityOutsideInterval_ThrowsConflict()
+        public async Task BookAsync_ConfiguredAvailabilityOutsideInterval_ThrowsConflict()
         {
             var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(14);
             var dto = new CreateBookingDto
@@ -827,11 +667,11 @@ namespace MedLink.Test.Services
                     new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = bookingDate.DayOfWeek, StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(12) }
                 });
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.BookAsync(dto, PatientId));
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ConfiguredAvailabilityDayOff_ThrowsConflict()
+        public async Task BookAsync_ConfiguredAvailabilityDayOff_ThrowsConflict()
         {
             var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(10);
             var dto = new CreateBookingDto
@@ -848,11 +688,11 @@ namespace MedLink.Test.Services
                     new ProviderAvailability { ProviderProfileId = ProviderId, DayOfWeek = (DayOfWeek)(((int)bookingDate.DayOfWeek + 1) % 7), StartTime = TimeSpan.FromHours(9), EndTime = TimeSpan.FromHours(12) }
                 });
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
+            await Assert.ThrowsAsync<ConflictException>(() => sut.BookAsync(dto, PatientId));
         }
 
         [Fact]
-        public async Task CreateBookingAsync_ConfiguredAvailabilityWithConflictingBooking_ThrowsConflict()
+        public async Task BookAsync_ConfiguredAvailabilityWithConflictingBooking_ThrowsConflict()
         {
             var bookingDate = DateTime.UtcNow.Date.AddDays(1).AddHours(10);
             var dto = new CreateBookingDto
@@ -871,79 +711,7 @@ namespace MedLink.Test.Services
             bookingRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<Booking>>()))
                 .ReturnsAsync(CreatePendingBooking());
 
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CreateBookingAsync(dto, PatientId));
-        }
-
-        [Fact]
-        public async Task CancelBookingsAsync_ValidBookings_CancelsAll()
-        {
-            var provider = CreateApprovedProvider();
-            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
-                .ReturnsAsync(provider);
-
-            var booking1 = CreatePendingBooking();
-            var booking2 = CreatePendingBooking();
-            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(new List<Booking> { booking1, booking2 });
-
-            await sut.CancelBookingsAsync(new[] { booking1.Id, booking2.Id }, ProviderUserId);
-
-            Assert.Equal(BookingStatus.Cancelled, booking1.Status);
-            Assert.Equal(BookingStatus.Cancelled, booking2.Status);
-            unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
-        }
-
-        [Fact]
-        public async Task CancelBookingsAsync_EmptyCollection_ThrowsBadRequest()
-        {
-            await Assert.ThrowsAsync<BadRequestException>(() => sut.CancelBookingsAsync(Array.Empty<Guid>(), ProviderUserId));
-        }
-
-        [Fact]
-        public async Task CancelBookingsAsync_AnotherProvidersBooking_ThrowsForbidden()
-        {
-            var provider = CreateApprovedProvider();
-            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
-                .ReturnsAsync(provider);
-
-            var booking = CreatePendingBooking();
-            booking.ProviderProfileId = Guid.NewGuid();
-            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(new List<Booking> { booking });
-
-            await Assert.ThrowsAsync<ForbiddenException>(() => sut.CancelBookingsAsync(new[] { booking.Id }, ProviderUserId));
-        }
-
-        [Fact]
-        public async Task CancelBookingsAsync_NonCancellableStatus_ThrowsConflict()
-        {
-            var provider = CreateApprovedProvider();
-            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
-                .ReturnsAsync(provider);
-
-            var booking = CreatePendingBooking();
-            booking.Status = BookingStatus.Completed;
-            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(new List<Booking> { booking });
-
-            await Assert.ThrowsAsync<ConflictException>(() => sut.CancelBookingsAsync(new[] { booking.Id }, ProviderUserId));
-        }
-
-        [Fact]
-        public async Task CancelBookingsAsync_MixedValidAndInvalid_ThrowsAndCancelsNone()
-        {
-            var provider = CreateApprovedProvider();
-            providerRepositoryMock.Setup(r => r.FindAsync(It.IsAny<ISpecification<ProviderProfile>>()))
-                .ReturnsAsync(provider);
-
-            var booking = CreatePendingBooking();
-            booking.Status = BookingStatus.Completed;
-            bookingRepositoryMock.Setup(r => r.GetAllAsync(It.IsAny<ISpecification<Booking>>()))
-                .ReturnsAsync(new List<Booking> { booking });
-
-            await Assert.ThrowsAsync<NotFoundException>(() => sut.CancelBookingsAsync(new[] { booking.Id, Guid.NewGuid() }, ProviderUserId));
-
-            Assert.NotEqual(BookingStatus.Cancelled, booking.Status);
+            await Assert.ThrowsAsync<ConflictException>(() => sut.BookAsync(dto, PatientId));
         }
     }
 }

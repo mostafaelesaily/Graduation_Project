@@ -24,7 +24,7 @@ namespace MedLink.Presentation.BackgroundServices
                 try
                 {
                     using var scope = serviceProvider.CreateScope();
-                    var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
+                    var bookingService = scope.ServiceProvider.GetRequiredService<IPatientBookingService>();
                     await bookingService.ExpireOverdueBookingsAsync();
                 }
                 catch (Exception ex)

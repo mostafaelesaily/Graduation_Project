@@ -9,14 +9,16 @@ using System.Threading.Tasks;
 
 namespace MedLink.Presentation.Controllers
 {
+    // Patient-facing booking actions. Provider review/approval/cancellation
+    // management lives in ProviderController.
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     public class BookingController : ControllerBase
     {
-        private readonly IBookingService bookingService;
+        private readonly IPatientBookingService bookingService;
 
-        public BookingController(IBookingService bookingService)
+        public BookingController(IPatientBookingService bookingService)
         {
             this.bookingService = bookingService;
         }
@@ -25,28 +27,21 @@ namespace MedLink.Presentation.Controllers
 
         [HttpPost]
         [Authorize(Roles = Roles.User)]
-        public async Task<IActionResult> Create([FromBody] CreateBookingDto dto)
+        public async Task<IActionResult> Book([FromBody] CreateBookingDto dto)
         {
-            var result = await bookingService.CreateBookingAsync(dto, CurrentUserId);
+            var result = await bookingService.BookAsync(dto, CurrentUserId);
             return Ok(result);
         }
 
-        [HttpPut("{bookingId:guid}/notes")]
-        public async Task<IActionResult> UpdateNotes([FromRoute] Guid bookingId, [FromBody] UpdateBookingDto dto)
-        {
-            await bookingService.UpdateNotesAsync(bookingId, dto, CurrentUserId);
-            return NoContent();
-        }
-
         [HttpGet("{bookingId:guid}")]
-        public async Task<IActionResult> Get([FromRoute] Guid bookingId)
+        public async Task<IActionResult> GetMyBookingById([FromRoute] Guid bookingId)
         {
-            var result = await bookingService.GetBookingAsync(bookingId, CurrentUserId);
+            var result = await bookingService.GetMyBookingByIdAsync(bookingId, CurrentUserId);
             return Ok(result);
         }
 
         [HttpGet("my")]
-        public async Task<IActionResult> GetMy(
+        public async Task<IActionResult> GetMyBookings(
             [FromQuery] int pageNum = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -54,77 +49,22 @@ namespace MedLink.Presentation.Controllers
             return Ok(result);
         }
 
-        [HttpGet("my-provider")]
-        [Authorize(Roles = Roles.Provider)]
-        public async Task<IActionResult> GetMyProvider(
-            [FromQuery] int pageNum = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? filter = null,
-            [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null,
-            [FromQuery] string? search = null)
+        [HttpPut("{bookingId:guid}/notes")]
+        public async Task<IActionResult> UpdateMyBookingNotes([FromRoute] Guid bookingId, [FromBody] UpdateBookingDto dto)
         {
-            var result = await bookingService.GetMyProviderBookingsAsync(
-                CurrentUserId, pageNum, pageSize, filter, startDate, endDate, search);
-            return Ok(result);
-        }
-
-        [HttpGet("provider/{providerProfileId:guid}")]
-        public async Task<IActionResult> GetByProvider(
-            [FromRoute] Guid providerProfileId,
-            [FromQuery] int pageNum = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? filter = null,
-            [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null,
-            [FromQuery] string? search = null)
-        {
-            var result = await bookingService.GetProviderBookingsAsync(
-                providerProfileId, CurrentUserId, pageNum, pageSize, filter, startDate, endDate, search);
-            return Ok(result);
-        }
-
-        [HttpGet("statistics")]
-        [Authorize(Roles = Roles.Provider)]
-        public async Task<IActionResult> GetStatistics()
-        {
-            var result = await bookingService.GetProviderBookingStatisticsAsync(CurrentUserId);
-            return Ok(result);
-        }
-
-        [HttpPatch("{bookingId:guid}/approve")]
-        [Authorize(Roles = Roles.Provider)]
-        public async Task<IActionResult> Approve([FromRoute] Guid bookingId)
-        {
-            var result = await bookingService.ApproveBookingAsync(bookingId, CurrentUserId);
-            return Ok(result);
-        }
-
-        [HttpPatch("{bookingId:guid}/reject")]
-        [Authorize(Roles = Roles.Provider)]
-        public async Task<IActionResult> Reject([FromRoute] Guid bookingId)
-        {
-            await bookingService.RejectBookingAsync(bookingId, CurrentUserId);
+            await bookingService.UpdateMyBookingNotesAsync(bookingId, dto, CurrentUserId);
             return NoContent();
         }
 
         [HttpPatch("{bookingId:guid}/cancel")]
-        public async Task<IActionResult> Cancel([FromRoute] Guid bookingId)
+        public async Task<IActionResult> CancelMyBooking([FromRoute] Guid bookingId)
         {
-            await bookingService.CancelBookingAsync(bookingId, CurrentUserId);
-            return NoContent();
-        }
-
-        [HttpPatch("cancel/bulk")]
-        [Authorize(Roles = Roles.Provider)]
-        public async Task<IActionResult> BulkCancel([FromBody] List<Guid> bookingIds)
-        {
-            await bookingService.CancelBookingsAsync(bookingIds, CurrentUserId);
+            await bookingService.CancelMyBookingAsync(bookingId, CurrentUserId);
             return NoContent();
         }
 
         [HttpGet("availability")]
-        public async Task<IActionResult> Availability([FromQuery] Guid providerProfileId, [FromQuery] DateTime bookingDate)
+        public async Task<IActionResult> CheckAvailability([FromQuery] Guid providerProfileId, [FromQuery] DateTime bookingDate)
         {
             var result = await bookingService.CheckAvailabilityAsync(providerProfileId, bookingDate);
             return Ok(result);

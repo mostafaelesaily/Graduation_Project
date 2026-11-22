@@ -17,6 +17,7 @@ namespace MedLink.Presentation.Extensions
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await MedicalSearchTestSeeder.SeedAsync(userManager, context);
+            await DatabaseSeeder.SeedAsync(userManager, context);
         }
     }
 }
