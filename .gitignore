@@ -18,6 +18,13 @@ Desktop.ini
 !.env.example
 !.env.sample
 appsettings.json
+
+# Local secret files (appsettings.json is ignored even when re-added)
+
+appsettings.localsecrets.json
+*.localsecrets.json
+appsettings.secrets.json
+localsecrets.json
 # Private keys and certificates
 
 *.pem

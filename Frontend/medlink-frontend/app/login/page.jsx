@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import API from '@/api/axios';
 import { renderGoogleButton } from '@/lib/googleAuth';
+import { isAuthenticated, sanitizeNextPath, setSession } from '@/lib/session';
 
 const translations = {
   en: {
@@ -75,6 +76,18 @@ export default function LoginPage() {
   const router = useRouter();
   const googleButtonRef = useRef(null);
 
+  // Where to land after a successful sign-in (`?next=/admin/provider-requests`).
+  const [nextPath, setNextPath] = useState('/home');
+
+  // Signed-in visitors never see the login page again.
+  useEffect(() => {
+    const requested = sanitizeNextPath(
+      new URLSearchParams(window.location.search).get('next')
+    );
+    setNextPath(requested);
+    if (isAuthenticated()) router.replace(requested);
+  }, [router]);
+
   const handleLanguageChange = (e) => {
     const selectedLang = e.target.value;
     setLang(selectedLang);
@@ -113,23 +126,16 @@ export default function LoginPage() {
         password,
       });
 
-      const accessToken = response.data?.accessToken || response.data?.token;
-      if (accessToken) {
-        localStorage.setItem('token', accessToken);
-      }
-      if (response.data?.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
-
-      const loggedInName = response.data?.userName || response.data?.name;
-      if (loggedInName) {
-        localStorage.setItem('userName', loggedInName);
-      }
+      setSession({
+        accessToken: response.data?.accessToken || response.data?.token,
+        refreshToken: response.data?.refreshToken,
+        userName: response.data?.userName || response.data?.name,
+      });
 
       setSuccessMessage(lang === 'ar' ? 'تم تسجيل الدخول بنجاح! جاري التحويل...' : 'Logged in successfully! Redirecting...');
 
       setTimeout(() => {
-        router.push('/home');
+        router.push(nextPath);
       }, 1500);
 
     } catch (error) {
@@ -177,15 +183,14 @@ export default function LoginPage() {
     try {
       const response = await API.post('/Account/GoogleSignIn', { idToken });
 
-      const accessToken = response.data?.accessToken;
-      if (accessToken) localStorage.setItem('token', accessToken);
-      if (response.data?.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
+      setSession({
+        accessToken: response.data?.accessToken,
+        refreshToken: response.data?.refreshToken,
+      });
 
       setSuccessMessage('Logged in successfully! Redirecting...');
       setTimeout(() => {
-        router.push('/home');
+        router.push(nextPath);
       }, 1500);
     } catch (error) {
       console.error("Google Sign-In Error:", error);

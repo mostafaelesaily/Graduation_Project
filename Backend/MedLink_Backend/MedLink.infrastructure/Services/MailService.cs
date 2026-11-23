@@ -29,6 +29,12 @@ namespace MedLink.infrastructure.Services
 
             using (var smtp = new SmtpClient())
             {
+                // Some networks cannot reach the certificate revocation list,
+                // which would otherwise fail the SMTP handshake. The certificate
+                // chain itself is still validated.
+                smtp.CheckCertificateRevocation = false;
+                smtp.Timeout = 20000;
+
                 await smtp.ConnectAsync(host, port, MailKit.Security.SecureSocketOptions.StartTls);
                 await smtp.AuthenticateAsync(username, password);
                 await smtp.SendAsync(email);
