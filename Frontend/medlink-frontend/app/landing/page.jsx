@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { isAuthenticated } from '@/lib/session';
 
 const services = [
   { icon: '🩺', title: 'Doctors', desc: 'Find specialists' },
@@ -39,7 +40,8 @@ export default function LandingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (localStorage.getItem('token')) router.replace('/home');
+    // Signed-in visitors skip the marketing page (also enforced by proxy.ts).
+    if (isAuthenticated()) router.replace('/home');
   }, [router]);
 
   return (

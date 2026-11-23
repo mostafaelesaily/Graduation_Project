@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 
 /* ---------- Icons ---------- */
 
@@ -181,13 +180,9 @@ export default function Home() {
   const [submittedSearch, setSubmittedSearch] = useState(null);
 
   const t = searchCopy[lang];
-  const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      router.replace('/landing');
-      return;
-    }
+    // Route access is enforced by the AuthGuard in app/home/layout.jsx.
     const hour = new Date().getHours();
     setPeriod(hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening');
     const savedName = localStorage.getItem('userName');

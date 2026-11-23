@@ -5,8 +5,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import API from '@/api/axios';
+import API, { API_BASE_URL } from '@/api/axios';
 import { renderGoogleButton } from '@/lib/googleAuth';
+import { isAuthenticated, sanitizeNextPath, setSession } from '@/lib/session';
 
 const PROVIDER_TYPES = [
   { label: 'Lab', value: 0 },
@@ -126,6 +127,11 @@ export default function RegisterPage() {
 
   const [verifyEmail, setVerifyEmail] = useState('');
 
+  // Signed-in visitors are sent to their dashboard instead of the sign-up form.
+  useEffect(() => {
+    if (isAuthenticated()) router.replace(sanitizeNextPath(null, '/home'));
+  }, [router]);
+
   const selectRole = (newRole) => {
     setRole(newRole);
     setProviderStep(1);
@@ -185,7 +191,11 @@ export default function RegisterPage() {
       console.error("Full Error Object:", error);
 
       if (!error.response) {
-        setErrorMessage(lang === 'ar' ? 'تعذر الاتصال بالخادم. يرجى التحقق من الشبكة.' : 'Unable to connect to the server. Please check your network or server CORS settings.');
+        setErrorMessage(
+          lang === 'ar'
+            ? `تعذر الاتصال بالخادم على ${API_BASE_URL}. تأكد من تشغيل الباك إند ومن إعدادات CORS.`
+            : `Unable to connect to the server at ${API_BASE_URL}. Make sure the backend is running and CORS allows this origin.`
+        );
         return;
       }
 
@@ -265,7 +275,9 @@ export default function RegisterPage() {
       console.error("Full Error Object:", error);
 
       if (!error.response) {
-        setErrorMessage('Unable to connect to the server. Please check your network or server CORS settings.');
+        setErrorMessage(
+          `Unable to connect to the server at ${API_BASE_URL}. Make sure the backend is running and CORS allows this origin.`
+        );
         return;
       }
 
@@ -301,11 +313,10 @@ export default function RegisterPage() {
     try {
       const response = await API.post('/Account/GoogleSignIn', { idToken });
 
-      const accessToken = response.data?.accessToken;
-      if (accessToken) localStorage.setItem('token', accessToken);
-      if (response.data?.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
+      setSession({
+        accessToken: response.data?.accessToken,
+        refreshToken: response.data?.refreshToken,
+      });
 
       setSuccessMessage('Signed in successfully! Redirecting...');
       setTimeout(() => {
