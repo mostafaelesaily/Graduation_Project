@@ -5,14 +5,14 @@ using System;
 
 namespace MedLink.Application.Mapping
 {
+    // Shared read mapping: used by both the patient-facing and the
+    // provider-management booking services to project a Booking entity.
     public class BookingMappingProfile : Profile
     {
         public BookingMappingProfile()
         {
-            CreateMap<Booking, GetBookingDto>();
-            CreateMap<CreateBookingDto, Booking>();
-            CreateMap<UpdateBookingDto, Booking>()
-                .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
+            CreateMap<Booking, GetBookingDto>()
+                .ForMember(dest => dest.PatientName, opt => opt.MapFrom(src => src.User != null ? src.User.UserName : null));
         }
     }
 }

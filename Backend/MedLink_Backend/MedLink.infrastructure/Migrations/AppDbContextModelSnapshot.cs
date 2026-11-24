@@ -61,7 +61,7 @@ namespace MedLink.infrastructure.Migrations
 
                     b.HasIndex("ProviderProfileId", "BookingDate")
                         .IsUnique()
-                        .HasFilter("([Status] <> 2 AND [Status] <> 4)");
+                        .HasFilter("([Status] <> 2 AND [Status] <> 4 AND [Status] <> 5)");
 
                     b.ToTable("Bookings", "Shared");
                 });
@@ -85,7 +85,7 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsActice")
+                    b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
@@ -124,6 +124,10 @@ namespace MedLink.infrastructure.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("[Email] IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -173,7 +177,147 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("Notification", "Shared");
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Review", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ProviderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Rating")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("decimal(3,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.HasIndex("ProviderId");
+
+                    b.HasIndex("ProviderId", "CreatedAt");
+
+                    b.ToTable("Reviews", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.StoredFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FileType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderProfileId");
+
+                    b.ToTable("StoredFiles", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Medical_History.MedicalRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Diagnosis")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PatientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("RecordDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("MedicalRecords", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderAvailability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderProfileId", "DayOfWeek", "StartTime", "EndTime")
+                        .IsUnique();
+
+                    b.ToTable("ProviderAvailabilities", "Shared");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderLocations", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -216,7 +360,7 @@ namespace MedLink.infrastructure.Migrations
                     b.ToTable("ProviderLocations", "Shared");
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderProfile", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderProfile", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -236,11 +380,6 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<int>("ProviderType")
                         .HasColumnType("int");
 
-                    b.Property<string>("ServiceName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<string>("TaxNumber")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -258,10 +397,12 @@ namespace MedLink.infrastructure.Migrations
                     b.HasIndex("userId")
                         .IsUnique();
 
+                    b.HasIndex("verificationStatus");
+
                     b.ToTable("ProviderProfiles", "Shared");
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.StoredFile", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderService", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -270,24 +411,29 @@ namespace MedLink.infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("FileName")
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("ProviderProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ServiceName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.HasKey("Id");
 
-                    b.ToTable("storedFiles", "Shared");
+                    b.HasIndex("ProviderProfileId");
+
+                    b.ToTable("ProviderServices", "Shared");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -425,7 +571,7 @@ namespace MedLink.infrastructure.Migrations
 
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Booking", b =>
                 {
-                    b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
                         .WithMany("Bookings")
                         .HasForeignKey("ProviderProfileId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -461,12 +607,12 @@ namespace MedLink.infrastructure.Migrations
                             b1.Property<DateTime>("ExpiresOn")
                                 .HasColumnType("datetime2");
 
+                            b1.Property<DateTime?>("RevokedOn")
+                                .HasColumnType("datetime2");
+
                             b1.Property<string>("Token")
                                 .IsRequired()
                                 .HasColumnType("nvarchar(max)");
-
-                            b1.Property<DateTime?>("revokedOn")
-                                .HasColumnType("datetime2");
 
                             b1.HasKey("AppUserId", "Id");
 
@@ -482,7 +628,7 @@ namespace MedLink.infrastructure.Migrations
             modelBuilder.Entity("MedLink.Domain.Entities.Common.Notifications", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "User")
-                        .WithMany("notifications")
+                        .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -490,9 +636,61 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderLocations", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.Review", b =>
                 {
-                    b.HasOne("MedLink.Domain.Entities.Common.ProviderProfile", "ProviderProfile")
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "Patient")
+                        .WithMany("PatientReviews")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "Provider")
+                        .WithMany("ProviderReviews")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Common.StoredFile", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
+                        .WithMany("StoredFiles")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Medical_History.MedicalRecord", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "Patient")
+                        .WithMany("MedicalRecords")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderAvailability", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
+                        .WithMany("ProviderAvailabilities")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderLocations", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
                         .WithMany("ProviderLocations")
                         .HasForeignKey("ProviderProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -501,15 +699,26 @@ namespace MedLink.infrastructure.Migrations
                     b.Navigation("ProviderProfile");
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderProfile", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderProfile", b =>
                 {
                     b.HasOne("MedLink.Domain.Entities.Common.Identity.AppUser", "user")
                         .WithOne("providerProfile")
-                        .HasForeignKey("MedLink.Domain.Entities.Common.ProviderProfile", "userId")
+                        .HasForeignKey("MedLink.Domain.Entities.Provider.ProviderProfile", "userId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("user");
+                });
+
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderService", b =>
+                {
+                    b.HasOne("MedLink.Domain.Entities.Provider.ProviderProfile", "ProviderProfile")
+                        .WithMany("ProviderServices")
+                        .HasForeignKey("ProviderProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderProfile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -567,17 +776,29 @@ namespace MedLink.infrastructure.Migrations
                 {
                     b.Navigation("Bookings");
 
-                    b.Navigation("notifications");
+                    b.Navigation("MedicalRecords");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("PatientReviews");
+
+                    b.Navigation("ProviderReviews");
 
                     b.Navigation("providerProfile")
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MedLink.Domain.Entities.Common.ProviderProfile", b =>
+            modelBuilder.Entity("MedLink.Domain.Entities.Provider.ProviderProfile", b =>
                 {
                     b.Navigation("Bookings");
 
+                    b.Navigation("ProviderAvailabilities");
+
                     b.Navigation("ProviderLocations");
+
+                    b.Navigation("ProviderServices");
+
+                    b.Navigation("StoredFiles");
                 });
 #pragma warning restore 612, 618
         }

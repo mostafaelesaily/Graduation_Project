@@ -6,6 +6,7 @@ using MedLink.Application.Interfaces.Common;
 using MedLink.Application.Specifications.ProviderProfiles;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
+using MedLink.Domain.Entities.Provider;
 using MedLink.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using System;
@@ -34,7 +35,7 @@ namespace MedLink.Application.Services.Common
         private readonly ILogger<AdminService> logger;
         private readonly IMapper mapper;
         public async Task<PaginatedResultDto<GetProviderRequestDto>>
-    GetAllProviderRequest(int pageNum, int pageSize)
+    GetAllProviderRequest(int pageNum, int pageSize, string? search = null, VerificationStatus? status = null)
         {
             if (pageNum < 1 || pageSize < 1)
                 throw new ArgumentException(
@@ -42,21 +43,27 @@ namespace MedLink.Application.Services.Common
 
             logger.LogInformation(
                 "Attempting to get provider requests. Page: {PageNum}, " +
-                "PageSize: {PageSize}, Status: Pending or Rejected",
+                "PageSize: {PageSize}, Search: {Search}, Status: {Status}",
                 pageNum,
-                pageSize);
+                pageSize,
+                search,
+                status);
 
             var cacheKey =
-                $"Get_ProviderRequest_pageNum:{pageNum}_pageSize:{pageSize}";
+                $"Get_ProviderRequest_pageNum:{pageNum}_pageSize:{pageSize}_search:{search}_status:{status}";
 
             var result = await cacheService.GetOrSetAsync(cacheKey, async () =>
             {
                 var specification =
-                    new ProviderStatusSpecification(pageNum, pageSize);
+                    new ProviderStatusSpecification(pageNum, pageSize, search, status);
 
                 var providers = await unitOfWork
                     .Repository<ProviderProfile>()
                     .GetAllAsync(specification);
+
+                var totalCount = await unitOfWork
+                    .Repository<ProviderProfile>()
+                    .CountAsync(specification);
 
                 var providerDtos = mapper.Map<IReadOnlyList<GetProviderRequestDto>>(
                     providers);
@@ -68,13 +75,15 @@ namespace MedLink.Application.Services.Common
                         .GetByIdAsync(provider.LicenseFileId);
 
                     dto.LicenseImageUrl = licenseFile?.FilePath;
+                    dto.Status = provider.verificationStatus;
                 }
 
                 return new PaginatedResultDto<GetProviderRequestDto>
                 {
                     Data = providerDtos,
                     PageNumber = pageNum,
-                    PageSize = pageSize
+                    PageSize = pageSize,
+                    TotalCount = totalCount
                 };
             });
 
@@ -99,7 +108,7 @@ namespace MedLink.Application.Services.Common
             var user = await unitOfWork.Repository<AppUser>().GetByIdAsync(provider.userId);
             if (user != null)
             {
-                user.IsActice = true;
+                user.IsActive = true;
                 unitOfWork.Repository<AppUser>().Update(user);
             }
 

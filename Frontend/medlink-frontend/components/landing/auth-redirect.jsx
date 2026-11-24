@@ -2,20 +2,18 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { isAuthenticated } from "@/lib/session";
 
 /**
  * Preserves the original landing-page behaviour: signed-in visitors are sent
  * straight to their dashboard instead of seeing the marketing page.
+ * `proxy.ts` performs the same check server-side for direct URL visits.
  */
 export default function AuthRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      if (localStorage.getItem("token")) router.replace("/home");
-    } catch {
-      /* localStorage is unavailable (private mode / SSR) — stay on the page */
-    }
+    if (isAuthenticated()) router.replace("/home");
   }, [router]);
 
   return null;

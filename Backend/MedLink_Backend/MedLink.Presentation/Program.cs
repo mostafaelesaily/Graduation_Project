@@ -1,6 +1,7 @@
 using MedLink.Application.Dependency_Injection;
 using MedLink.Application.Interfaces.Common;
 using MedLink.infrastructure.DependencyInjection;
+using MedLink.Presentation.BackgroundServices;
 using MedLink.Presentation.Extensions;
 using MedLink.Presentation.Hubs;
 using MedLink.Presentation.Middlewares;
@@ -10,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationSender, SignalRNotificationSender>();
+builder.Services.AddHostedService<BookingExpirationBackgroundService>();
 
 // CORS
 builder.Services.AddCorsPolicy(builder.Configuration);
@@ -24,7 +26,9 @@ builder.Services.AddMailService();
 builder.Services.AddFileService();
 builder.Services.AddCacheService(builder.Configuration);
 builder.Services.AddGoogleAuthService();
+builder.Services.AddGeminiMedicalSearchService();
 builder.Services.AddAppDI();
+builder.Services.AddMedicalSearchDI();
 
 var app = builder.Build();
 

@@ -18,7 +18,9 @@ namespace MedLink.Application.Dependency_Injection
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<INotificationService, NotificationService>();
-            services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IPatientBookingService, PatientBookingService>();
+            services.AddScoped<IProviderBookingService, ProviderBookingService>();
+            services.AddScoped<IProviderAvailabilityService, ProviderAvailabilityService>();
             return services;
         }
     }
