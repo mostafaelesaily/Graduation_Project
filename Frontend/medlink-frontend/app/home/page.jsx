@@ -201,11 +201,20 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
+  // const handleSearch = (e) => {
+  //   e.preventDefault();
+  //   const term = searchTerm.trim();
+  //   setSubmittedSearch(term ? { term, ai: aiEnabled } : null);
+  // };
   const handleSearch = (e) => {
-    e.preventDefault();
-    const term = searchTerm.trim();
-    setSubmittedSearch(term ? { term, ai: aiEnabled } : null);
-  };
+  e.preventDefault();
+
+  const term = searchTerm.trim();
+
+  if (!term) return;
+
+  router.push(`/search?q=${encodeURIComponent(term)}`);
+};
 
   const toggleAi = () => {
     setAiEnabled((enabled) => !enabled);

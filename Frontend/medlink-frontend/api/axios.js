@@ -1,3 +1,13 @@
+// import axios from 'axios';
+
+// const API = axios.create({
+//   baseURL: 'https://localhost:44302/api',
+//   headers: {
+//     'Content-Type': 'application/json',
+//   },
+// });
+
+// export default API;
 import axios from 'axios';
 
 // Point the frontend at whichever backend URL you are running.
@@ -14,5 +24,7 @@ const API = axios.create({
     'Content-Type': 'application/json',
   },
 });
+export default API;
+
 
 export default API;
