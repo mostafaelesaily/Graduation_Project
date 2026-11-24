@@ -17,27 +17,15 @@ namespace MedLink.infrastructure.DependencyInjection
             services.AddMemoryCache();
             services.AddStackExchangeRedisCache(options =>
             {
-                var redisOptions =
-                    ConfigurationOptions.Parse(configuration.GetConnectionString("Redis"));
+                options.Configuration =
+                    configuration.GetConnectionString("Redis");
 
-                // Fail fast and keep retrying in the background when Redis is down.
-                redisOptions.AbortOnConnectFail = false;
-                redisOptions.ConnectTimeout = 1000;
-                redisOptions.SyncTimeout = 1000;
-
-                options.ConfigurationOptions = redisOptions;
                 options.InstanceName = "RedisCacheInstance";
             });
             services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
                 var connectionString = configuration.GetConnectionString("Redis");
-                var options = ConfigurationOptions.Parse(connectionString);
-
-                // Do not crash the application when Redis is not running; the
-                // cache simply keeps retrying in the background.
-                options.AbortOnConnectFail = false;
-
-                return ConnectionMultiplexer.Connect(options);
+                return ConnectionMultiplexer.Connect(connectionString);
             });
             services.AddScoped<ICacheService, CacheService>();
             return services;

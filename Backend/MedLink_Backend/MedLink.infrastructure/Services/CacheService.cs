@@ -23,76 +23,38 @@ namespace MedLink.infrastructure.Services
         private readonly IDistributedCache cache;
         private readonly IConnectionMultiplexer redis;
 
-        // Redis is optional in local development. If it is not reachable the
-        // cache should degrade gracefully instead of failing the whole request.
-        private void LogCacheUnavailable(Exception exception)
-        {
-            logger.LogWarning(
-                exception,
-                "Redis cache is unavailable. Continuing without cache.");
-        }
-
         public async Task<bool> ExistsAsync(string key)
         {
-            try
-            {
-                return await cache.GetStringAsync(key) != null;
-            }
-            catch (Exception exception)
-            {
-                LogCacheUnavailable(exception);
-                return false;
-            }
+            return await cache.GetStringAsync(key) != null;
         }
 
         public async Task<T?> GetAsync<T>(string Key)
         {
-            try
-            {
-                var value = await cache.GetStringAsync(Key);
-                return value == null ?
-               default : JsonConvert.DeserializeObject<T>(value);
-            }
-            catch (Exception exception)
-            {
-                LogCacheUnavailable(exception);
-                return default;
-            }
+            var value = await cache.GetStringAsync(Key);
+            return value == null ? 
+           default : JsonConvert.DeserializeObject<T>(value);
         }
 
-        public async Task setAsync<T>(string key, T value, TimeSpan? slidingExpiration = null, TimeSpan? absoluteExpiration = null)
+        public Task setAsync<T>(string key, T value, TimeSpan? slidingExpiration = null, TimeSpan? absoluteExpiration = null)
         {
-            try
+            var options = new DistributedCacheEntryOptions()
             {
-                var options = new DistributedCacheEntryOptions()
-                {
-                    SlidingExpiration = slidingExpiration ?? TimeSpan.FromMinutes(5),
-                    AbsoluteExpirationRelativeToNow = absoluteExpiration ?? TimeSpan.FromHours(1)
-                };
-                var josn = JsonConvert.SerializeObject(value);
-                await cache.SetStringAsync(key, josn, options);
-            }
-            catch (Exception exception)
-            {
-                LogCacheUnavailable(exception);
-            }
+                SlidingExpiration = slidingExpiration ?? TimeSpan.FromMinutes(5),
+                AbsoluteExpirationRelativeToNow = absoluteExpiration ?? TimeSpan.FromHours(1)
+            };
+            var josn = JsonConvert.SerializeObject(value);
+            return cache.SetStringAsync(key, josn, options);
         }
 
         public async Task RemoveAsync(string Pattern)
         {
-            try
+            var server = redis.GetServer(redis.GetEndPoints().First());
+            var database = redis.GetDatabase();
+            foreach (var key in server.Keys(pattern: $"{Pattern}*"))
             {
-                var server = redis.GetServer(redis.GetEndPoints().First());
-                var database = redis.GetDatabase();
-                foreach (var key in server.Keys(pattern: $"{Pattern}*"))
-                {
-                    await database.KeyDeleteAsync(key);
-                }
+                await database.KeyDeleteAsync(key);
             }
-            catch (Exception exception)
-            {
-                LogCacheUnavailable(exception);
-            }
+
         }
 
         public async Task<T?> GetOrSetAsync<T>
