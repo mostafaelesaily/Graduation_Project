@@ -1,10 +1,22 @@
+// import axios from 'axios';
+
+// const API = axios.create({
+//   baseURL: 'https://localhost:44302/api',
+//   headers: {
+//     'Content-Type': 'application/json',
+//   },
+// });
+
+// export default API;
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'https://localhost:44302/api',
+  baseURL: 'https://localhost:7048/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
 export default API;
+
+
+ 
