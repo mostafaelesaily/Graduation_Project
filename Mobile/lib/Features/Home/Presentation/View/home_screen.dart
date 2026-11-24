@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
+import 'package:medlink/Features/Appointments/Presentation/View/appointments_screen.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_cubit.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_state.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/home_bottom_nav.dart';
+import 'package:medlink/Features/Home/Presentation/View/widgets/home_header.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/home_tab.dart';
+import 'package:medlink/Features/Search/Presentation/View/search_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   /// TODO: replace with the logged-in user's name once the profile endpoint
@@ -23,21 +30,53 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: ColorsManager.primaryBackgroundColor,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(
-          index: _currentIndex,
+        child: Column(
           children: [
-            HomeTab(userName: widget.userName),
-            const _ComingSoonTab(title: 'Search'),
-            const _ComingSoonTab(title: 'Appointments'),
-            const _ComingSoonTab(title: 'Records'),
-            const _ComingSoonTab(title: 'Profile'),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0, left: 8, right: 8),
+              child: const HomeHeader(hasUnreadNotifications: true),
+            ),
+            SizedBox(height: 20.h),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  BlocConsumer<HomeCubit, HomeState>(
+                    listener: (context, state) {
+                      if (state.status == HomeStatus.aiSearch) {
+                        setState(() {
+                          _currentIndex = 1;
+                        });
+                      }
+                    },
+                    builder: (context, state) {
+                      if (state.status == HomeStatus.home) {
+                        return HomeTab(userName: widget.userName);
+                      } else if (state.status == HomeStatus.search) {
+                        return SearchTab(searchQuery: state.searchQuery);
+                      }
+                      return SizedBox();
+                    },
+                  ),
+                  const _ComingSoonTab(title: 'Search'),
+                  const AppointmentsScreen(),
+                  const _ComingSoonTab(title: 'Records'),
+                  const _ComingSoonTab(title: 'Profile'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       bottomNavigationBar: HomeBottomNav(
         currentIndex: _currentIndex,
         appointmentsBadge: 2,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 0) {
+            context.read<HomeCubit>().changeHomeStatus(status: HomeStatus.home);
+          }
+        },
       ),
     );
   }

@@ -46,10 +46,10 @@ class _ProviderSignupState extends State<ProviderSignup> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<bool> _submit() async {
     FocusScope.of(context).unfocus();
 
-    // if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return false;
 
     // RegisterRequestModel model = RegisterRequestModel(
     //   name: widget.model!.name,
@@ -68,6 +68,7 @@ class _ProviderSignupState extends State<ProviderSignup> {
     // );
 
     // await _cubit.signup(model, _cubit.state.licenseFile!);
+    return true;
   }
 
   String? _requiredValidator(String? value) {
