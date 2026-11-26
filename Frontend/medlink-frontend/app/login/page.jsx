@@ -1,13 +1,10 @@
 
 'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import API from '@/api/axios';
-import { renderGoogleButton } from '@/lib/googleAuth';
-import { isAuthenticated, sanitizeNextPath, setSession } from '@/lib/session';
-
+import { decodeToken, getRoles, getUserName, getHomePath } from '@/lib/auth';
 const translations = {
   en: {
     backHome: "Back Home",
@@ -126,18 +123,36 @@ export default function LoginPage() {
         password,
       });
 
-      setSession({
-        accessToken: response.data?.accessToken || response.data?.token,
-        refreshToken: response.data?.refreshToken,
-        userName: response.data?.userName || response.data?.name,
-      });
+      const accessToken = response.data?.accessToken || response.data?.token;
+      if (accessToken) {
+        localStorage.setItem('token', accessToken);
+      }
+      if (response.data?.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
+
+      // const loggedInName = response.data?.userName || response.data?.name;
+      // if (loggedInName) {
+      //   localStorage.setItem('userName', loggedInName);
+      // }
+
+      // setSuccessMessage(lang === 'ar' ? 'تم تسجيل الدخول بنجاح! جاري التحويل...' : 'Logged in successfully! Redirecting...');
+
+      // setTimeout(() => {
+      //   router.push('/home');
+      // }, 1500);
+      const claims = decodeToken(accessToken);
+      const loggedInName = response.data?.userName || response.data?.name || getUserName(claims);
+      if (loggedInName) {
+        localStorage.setItem('userName', loggedInName);
+      }
+      const destination = getHomePath(getRoles(claims));
 
       setSuccessMessage(lang === 'ar' ? 'تم تسجيل الدخول بنجاح! جاري التحويل...' : 'Logged in successfully! Redirecting...');
 
       setTimeout(() => {
-        router.push(nextPath);
+        router.push(destination);
       }, 1500);
-
     } catch (error) {
       console.error("Full Login Error:", error);
 
@@ -159,8 +174,10 @@ export default function LoginPage() {
           if (err.description) detailedErrors.push(err.description);
           else if (typeof err === 'string') detailedErrors.push(err);
         });
-      } else if (apiData?.message) {
-        detailedErrors.push(apiData.message);
+      // } else if (apiData?.message) {
+      //   detailedErrors.push(apiData.message);
+      } else if (apiData?.Message || apiData?.message) {
+        detailedErrors.push(apiData.Message || apiData.message);
       } else if (apiData?.title) {
         detailedErrors.push(apiData.title);
       }
