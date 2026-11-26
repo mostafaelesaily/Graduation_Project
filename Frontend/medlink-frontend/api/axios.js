@@ -1,14 +1,21 @@
 
 import axios from 'axios';
 
+// Backend URL can be overridden in .env.local
+// IIS Express: https://localhost:44302/api
+// dotnet run (http): http://localhost:5031/api
+// dotnet run (https): https://localhost:7048/api
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7048/api';
+
 const API = axios.create({
-  baseURL: 'https://localhost:7048/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add the authentication token automatically to requests.
+// Add authentication token automatically to requests.
 API.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const url = (config.url || '').toLowerCase();
