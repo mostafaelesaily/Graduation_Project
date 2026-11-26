@@ -13,5 +13,14 @@ namespace MedLink.Application.Interfaces.Common
             double longitude,
             int radiusInMeters,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Calls Gemini API to extract a single best medical search keyword
+        /// (e.g. specialty or facility type) from a patient's medical record text
+        /// (Diagnosis + Description).
+        /// </summary>
+        Task<string> ExtractKeywordAsync(
+            string medicalContext,
+            CancellationToken cancellationToken = default);
     }
 }

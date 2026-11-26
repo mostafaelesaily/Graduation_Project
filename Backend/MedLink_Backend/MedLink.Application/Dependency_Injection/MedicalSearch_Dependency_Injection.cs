@@ -11,6 +11,7 @@ namespace MedLink.Application.Dependency_Injection
         {
             // Register services
             services.AddScoped<IMedicalSearchService, MedicalSearchService>();
+            services.AddScoped<IRecommendationService, RecommendationService>();
 
             return services;
         }

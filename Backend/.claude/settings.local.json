@@ -21,7 +21,14 @@
       "WebFetch(domain:aistudio.google.com)",
       "Bash(dotnet tool:*)",
       "Bash(where sqlcmd:*)",
-      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -i _cleanup_old_seed.sql)"
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -i _cleanup_old_seed.sql)",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT ''Bookings'' AS TableName, COUNT\\(*\\) AS Cnt FROM Bookings UNION ALL SELECT ''Reviews'', COUNT\\(*\\) FROM Reviews UNION ALL SELECT ''MedicalRecords'', COUNT\\(*\\) FROM MedicalRecord UNION ALL SELECT ''Notification'', COUNT\\(*\\) FROM Notification;\")",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN \\(''Bookings'',''Reviews'',''MedicalRecord'',''Notification''\\);\")",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=''Shared'' ORDER BY TABLE_NAME;\")",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT ''Bookings'' AS T, COUNT\\(*\\) AS Cnt FROM Shared.Bookings UNION ALL SELECT ''Reviews'', COUNT\\(*\\) FROM Shared.Reviews UNION ALL SELECT ''MedicalRecords'', COUNT\\(*\\) FROM Shared.MedicalRecords UNION ALL SELECT ''Notification'', COUNT\\(*\\) FROM Shared.Notification UNION ALL SELECT ''AppUsers'', COUNT\\(*\\) FROM Shared.AppUsers UNION ALL SELECT ''ProviderProfiles'', COUNT\\(*\\) FROM Shared.ProviderProfiles;\")",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT Id, Email, UserName FROM Shared.AppUsers ORDER BY Email;\")",
+      "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \":*)",
+      "Bash(timeout 25 dotnet run --project MedLink.Presentation --no-launch-profile)"
     ]
   }
 }
