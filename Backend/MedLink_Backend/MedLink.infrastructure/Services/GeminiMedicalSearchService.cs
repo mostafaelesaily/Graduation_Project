@@ -71,6 +71,22 @@ You are ONLY allowed to search for and return places belonging to these THREE ma
   ""results"": []
 }";
 
+        private const string KEYWORD_EXTRACTION_SYSTEM_PROMPT = @"# Role & Identity
+You are the MedLink Medical Keyword Extractor. You receive a patient's medical record text (diagnoses, descriptions, complaints, symptoms - possibly in Arabic, English, or a mix) and your sole job is to extract ONE short search keyword that best represents the type of medical facility or specialty this patient should be recommended next.
+
+# Instructions
+1. Read all the provided diagnoses/descriptions/notes together.
+2. Identify the most relevant, most recent, or most urgent medical need.
+3. Output a SHORT keyword (1-3 words) suitable for searching medical facilities - e.g. ""Cardiology"", ""Dermatology Clinic"", ""Orthopedic"", ""Blood Test Lab"", ""Dental Clinic"", ""General Hospital"".
+4. The keyword must describe a medical specialty, clinic/hospital type, or lab test category - never a drug name, a pharmacy, or a non-medical term.
+
+# Output Format Rules
+- Your response MUST ALWAYS be valid, raw JSON ONLY, with this exact schema:
+{
+  ""keyword"": ""short keyword here""
+}
+- NEVER include markdown code blocks, greetings, explanations, or conversational text outside the JSON object.";
+
         public GeminiMedicalSearchService(
             IConfiguration configuration,
             ILogger<GeminiMedicalSearchService> logger,
@@ -212,6 +228,110 @@ Return at least 5 and up to 10 results as valid JSON only, following the specifi
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error calling Gemini API for medical search");
+                throw;
+            }
+        }
+
+        public async Task<string> ExtractKeywordAsync(
+            string medicalContext,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var apiKey = _configuration["Gemini:ApiKey"];
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    _logger.LogError("Gemini API key not configured");
+                    throw new InvalidOperationException("Gemini API key is not configured");
+                }
+
+                var model = _configuration["Gemini:Model"] ?? "gemini-3.5-flash-lite";
+
+                var userMessage = $@"Patient medical record text:
+{medicalContext}
+
+Extract ONE short search keyword as valid JSON only, following the specified schema.";
+
+                var requestPayload = new
+                {
+                    system_instruction = new { parts = new[] { new { text = KEYWORD_EXTRACTION_SYSTEM_PROMPT } } },
+                    contents = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            parts = new[] { new { text = userMessage } }
+                        }
+                    }
+                };
+
+                var url = string.Format(GEMINI_API_URL, model) + $"?key={apiKey}";
+                var jsonContent = JsonSerializer.Serialize(requestPayload);
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("Calling Gemini API for keyword extraction, Model: {Model}", model);
+
+                var response = await _httpClient.PostAsync(url, content, cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    _logger.LogError("Gemini API returned {StatusCode}: {ErrorBody}", (int)response.StatusCode, errorBody);
+                    throw new HttpRequestException(
+                        $"Gemini API error {(int)response.StatusCode}: {errorBody}");
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                using (var doc = JsonDocument.Parse(responseContent))
+                {
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+                    {
+                        var candidate = candidates[0];
+                        if (candidate.TryGetProperty("content", out var contentObj) &&
+                            contentObj.TryGetProperty("parts", out var parts) &&
+                            parts.GetArrayLength() > 0)
+                        {
+                            var part = parts[0];
+                            if (part.TryGetProperty("text", out var textProp))
+                            {
+                                var responseText = textProp.GetString() ?? string.Empty;
+
+                                if (string.IsNullOrWhiteSpace(responseText))
+                                {
+                                    _logger.LogWarning("Gemini returned empty keyword extraction response");
+                                    return string.Empty;
+                                }
+
+                                var keywordResponse = JsonSerializer.Deserialize<GeminiKeywordExtractionResponse>(responseText, options);
+
+                                _logger.LogInformation("Gemini keyword extraction completed - Keyword: {Keyword}",
+                                    keywordResponse?.Keyword);
+
+                                return keywordResponse?.Keyword ?? string.Empty;
+                            }
+                        }
+                    }
+                }
+
+                _logger.LogWarning("Unexpected Gemini response structure for keyword extraction");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error when calling Gemini API for keyword extraction");
+                throw;
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogWarning(ex, "Gemini keyword extraction was cancelled");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Gemini API for keyword extraction");
                 throw;
             }
         }
