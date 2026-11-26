@@ -116,7 +116,7 @@ class _InputFieldState extends State<InputField> {
                   fillColor: Colors.white,
                   hint: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    spacing: 12,
+                    spacing: widget.icon == null ? 0 : 12,
                     children: [
                       Icon(widget.icon, size: 12.w),
                       Text(

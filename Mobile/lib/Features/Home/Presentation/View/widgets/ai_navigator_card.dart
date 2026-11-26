@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_cubit.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_state.dart';
 
 class AiNavigatorCard extends StatefulWidget {
   final ValueChanged<String>? onSubmit;
@@ -31,6 +34,18 @@ class _AiNavigatorCardState extends State<AiNavigatorCard> {
     if (text.isEmpty) return;
     widget.onSubmit?.call(text);
     FocusScope.of(context).unfocus();
+    if (!_aiEnabled) {
+      context.read<HomeCubit>().changeHomeStatus(
+        status: HomeStatus.search,
+        searchQuery: _controller.text.trim(),
+      );
+    }
+    if (_aiEnabled) {
+      context.read<HomeCubit>().changeHomeStatus(
+        status: HomeStatus.aiSearch,
+        searchQuery: _controller.text.trim(),
+      );
+    }
   }
 
   @override
@@ -159,7 +174,9 @@ class _AiNavigatorCardState extends State<AiNavigatorCard> {
                   side: BorderSide(color: ColorsManager.cardBorder),
                   shape: const StadiumBorder(),
                   onPressed: () {
-                    _controller.text = label.substring(label.indexOf(' ') + 1).trim();
+                    _controller.text = label
+                        .substring(label.indexOf(' ') + 1)
+                        .trim();
                     _controller.selection = TextSelection.collapsed(
                       offset: _controller.text.length,
                     );

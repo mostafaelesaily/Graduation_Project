@@ -165,9 +165,12 @@ class _ProviderSignupState extends State<VerificationScaffold> {
                         onPressed: isBusy
                             ? null
                             : () async {
-                                await widget.onSubmit();
-                                if (widget.stepNumber == 2) {
-                                  context.pushNamed('adminReview');
+                                if (await widget.onSubmit()) {
+                                  // if (state.status == ProviderSignupStatus.success){
+                                  // }
+                                  if (widget.stepNumber == 2) {
+                                    context.pushNamed('adminReview');
+                                  }
                                 }
                               },
                         style: ElevatedButton.styleFrom(

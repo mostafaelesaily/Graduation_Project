@@ -117,14 +117,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
       context.pushNamed('signupProvider', extra: model);
     }
-
-    _serviceTypeContorller.clear();
-    _idNumberController.clear();
-    _nameController.clear();
-    _emailController.clear();
-    _phoneController.clear();
-    _passwordController.clear();
-    _confirmPasswordController.clear();
   }
 
   @override

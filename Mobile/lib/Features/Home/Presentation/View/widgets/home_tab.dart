@@ -20,8 +20,6 @@ class HomeTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const HomeHeader(hasUnreadNotifications: true),
-          SizedBox(height: 20.h),
           HomeGreeting(userName: userName),
           SizedBox(height: 20.h),
           const AiNavigatorCard(),
