@@ -1,4 +1,5 @@
 ﻿using MedLink.Application.DTOs.Common.identity;
+using MedLink.Application.DTOs.Common.identityDTOs;
 using MedLink.Domain.Entities.Common;
 using MedLink.Domain.Entities.Common.Identity;
 using System;
@@ -16,6 +17,7 @@ namespace MedLink.Application.Interfaces.Common
         Task<RegisterProviderResponse> RegisterProvider(RegisterProviderRequest providerRequest);
         public Task<AuthenticationResponseDto> Login(LoginDto loginDto);
         public Task<string> ConfirmMail(string userId, string token);
+        Task<AuthenticationResponseDto> GoogleSignInAsync(GoogleLoginDto request);
         public Task Logout(string userId);
 
     }

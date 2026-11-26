@@ -2,10 +2,18 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import API from '@/api/axios';
+import API, { API_BASE_URL } from '@/api/axios';
+import { renderGoogleButton } from '@/lib/googleAuth';
+import { isAuthenticated, sanitizeNextPath, setSession } from '@/lib/session';
+
+const PROVIDER_TYPES = [
+  { label: 'Lab', value: 0 },
+  { label: 'Hospital', value: 1 },
+  { label: 'Clinic', value: 2 },
+];
 
 // 1. قاموس النصوص للغتين (الإنجليزية والعربية) لصفحة التسجيل
 const translations = {
@@ -94,27 +102,41 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Provider-only fields (step 1 extras)
+  const [nationalId, setNationalId] = useState('');
+
+  // Provider-only fields (step 2)
+  const [serviceType, setServiceType] = useState('');
+  const [serviceName, setServiceName] = useState('');
+  const [address, setAddress] = useState('');
+  const [servicePhoneNumber, setServicePhoneNumber] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [taxNumber, setTaxNumber] = useState('');
+  const [licenseFile, setLicenseFile] = useState(null);
+
+  const [providerStep, setProviderStep] = useState(1); // 1, 2, 3
+
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   const router = useRouter();
+  const googleButtonRef = useRef(null);
 
   const [verifyEmail, setVerifyEmail] = useState('');
 
-  // دالة تغيير اللغة وتحديث اتجاه الصفحة فوراً
-  const handleLanguageChange = (e) => {
-    const selectedLang = e.target.value;
-    setLang(selectedLang);
-    
-    if (selectedLang === 'ar') {
-      document.documentElement.dir = 'rtl';
-      document.documentElement.lang = 'ar';
-    } else {
-      document.documentElement.dir = 'ltr';
-      document.documentElement.lang = 'en';
-    }
+  // Signed-in visitors are sent to their dashboard instead of the sign-up form.
+  useEffect(() => {
+    if (isAuthenticated()) router.replace(sanitizeNextPath(null, '/home'));
+  }, [router]);
+
+  const selectRole = (newRole) => {
+    setRole(newRole);
+    setProviderStep(1);
+    setFieldErrors({});
+    setErrorMessage('');
   };
 
   const handleRegister = async (e) => {
@@ -134,6 +156,10 @@ export default function RegisterPage() {
       errors.confirmPassword = lang === 'ar' ? 'كلمات المرور غير متطابقة.' : 'Passwords do not match.';
     }
 
+    if (role === 'Provider') {
+      if (!nationalId.trim()) errors.nationalId = 'National ID number is required.';
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setErrorMessage(lang === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة المحددة باللون الأحمر.' : 'Please fill in all required fields marked in red.');
@@ -141,6 +167,13 @@ export default function RegisterPage() {
     }
 
     setFieldErrors({});
+
+    // Provider role: move to step 2 (verification details) instead of submitting.
+    if (role === 'Provider') {
+      setProviderStep(2);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -158,7 +191,11 @@ export default function RegisterPage() {
       console.error("Full Error Object:", error);
 
       if (!error.response) {
-        setErrorMessage(lang === 'ar' ? 'تعذر الاتصال بالخادم. يرجى التحقق من الشبكة.' : 'Unable to connect to the server. Please check your network or server CORS settings.');
+        setErrorMessage(
+          lang === 'ar'
+            ? `تعذر الاتصال بالخادم على ${API_BASE_URL}. تأكد من تشغيل الباك إند ومن إعدادات CORS.`
+            : `Unable to connect to the server at ${API_BASE_URL}. Make sure the backend is running and CORS allows this origin.`
+        );
         return;
       }
 
@@ -191,6 +228,122 @@ export default function RegisterPage() {
     }
   };
 
+  const handleProviderVerificationSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    const errors = {};
+    if (serviceType === '') errors.serviceType = 'Service type is required.';
+    if (!serviceName.trim()) errors.serviceName = 'Service name is required.';
+    if (!address.trim()) errors.address = 'Location is required.';
+    if (!servicePhoneNumber.trim()) errors.servicePhoneNumber = 'Service contact phone is required.';
+    if (!postalCode.trim()) errors.postalCode = 'Postal code is required.';
+    if (!taxNumber.trim()) errors.taxNumber = 'Tax number is required.';
+    if (!licenseFile) errors.licenseFile = 'License document is required.';
+    else if (licenseFile.size > 5 * 1024 * 1024) errors.licenseFile = 'License file must not exceed 5 MB.';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setErrorMessage('Please fill in all required fields marked in red.');
+      return;
+    }
+
+    setFieldErrors({});
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('userName', fullName);
+      formData.append('Email', email);
+      formData.append('phoneNumber', phoneNumber);
+      formData.append('Password', password);
+      formData.append('NationalIdNumber', nationalId);
+      formData.append('ServiceName', serviceName);
+      formData.append('Address', address);
+      formData.append('ServicePhoneNumber', servicePhoneNumber);
+      formData.append('ProviderType', serviceType);
+      formData.append('postalCode', postalCode);
+      formData.append('taxNumber', taxNumber);
+      formData.append('LicenseFile', licenseFile);
+
+      await API.post('/Account/RegisterProvider', formData, {
+        headers: { 'Content-Type': undefined },
+      });
+
+      setProviderStep('verify');
+    } catch (error) {
+      console.error("Full Error Object:", error);
+
+      if (!error.response) {
+        setErrorMessage(
+          `Unable to connect to the server at ${API_BASE_URL}. Make sure the backend is running and CORS allows this origin.`
+        );
+        return;
+      }
+
+      const apiData = error.response.data;
+      let detailedErrors = [];
+
+      if (apiData?.errors && typeof apiData.errors === 'object') {
+        Object.entries(apiData.errors).forEach(([field, msgs]) => {
+          const messageStr = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+          detailedErrors.push(`${field}: ${messageStr}`);
+        });
+      } else if (apiData?.message) {
+        detailedErrors.push(apiData.message);
+      } else if (apiData?.title) {
+        detailedErrors.push(apiData.title);
+      }
+
+      if (detailedErrors.length > 0) {
+        setErrorMessage(detailedErrors.join(' | '));
+      } else {
+        setErrorMessage('An error occurred during registration. Please check your input.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleToken = async (idToken) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setGoogleLoading(true);
+
+    try {
+      const response = await API.post('/Account/GoogleSignIn', { idToken });
+
+      setSession({
+        accessToken: response.data?.accessToken,
+        refreshToken: response.data?.refreshToken,
+      });
+
+      setSuccessMessage('Signed in successfully! Redirecting...');
+      setTimeout(() => {
+        router.push('/home');
+      }, 1500);
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+
+      if (error.response) {
+        const apiData = error.response.data;
+        setErrorMessage(apiData?.message || apiData?.title || 'Google sign-in failed. Please try again.');
+      } else {
+        setErrorMessage(error.message || 'Google sign-in failed.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const container = googleButtonRef.current;
+    if (!container) return;
+    renderGoogleButton(container, handleGoogleToken, container.offsetWidth || 300).catch((err) => {
+      console.error('Failed to render Google button:', err);
+    });
+  }, [role]);
+
   if (verifyEmail) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4 font-sans">
@@ -217,37 +370,408 @@ export default function RegisterPage() {
     );
   }
 
+  // Provider - Verify Email (after successful submission, before "under review")
+  if (role === 'Provider' && providerStep === 'verify') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4 font-sans">
+        <div className="text-2xl font-bold text-slate-900 mb-6">
+          💙 Med<span className="text-blue-500">Link</span>
+        </div>
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-10 text-center">
+          <div className="relative mx-auto w-24 h-24 rounded-full bg-sky-100 flex items-center justify-center text-4xl">
+            ✉️
+            <span className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-green-500 text-white text-sm flex items-center justify-center">
+              ✓
+            </span>
+          </div>
+          <h2 className="mt-5 text-2xl font-bold text-slate-900">Verify your email</h2>
+          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+            We have sent a verification email to <span className="font-bold">{email}</span>. Click the link inside to confirm your account.
+          </p>
+          <button
+            type="button"
+            onClick={() => setProviderStep(3)}
+            className="mt-6 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition duration-200"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Provider - Step 3: Under review
+  if (role === 'Provider' && providerStep === 3) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sky-50 p-4 font-sans">
+        <div className="text-2xl font-bold text-slate-900 mb-6">
+          💙 Med<span className="text-blue-500">Link</span>
+        </div>
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-10 text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-sky-100 flex items-center justify-center text-3xl">
+            ⏱️
+          </div>
+          <h2 className="mt-5 text-xl font-bold text-slate-900">Your request is under review</h2>
+          <p className="mt-3 text-xs text-slate-500 leading-relaxed">
+            Our Admin team is reviewing your documents. We will email you as soon as the review is complete.
+          </p>
+          <div className="mt-5 p-3.5 bg-sky-50 rounded-xl flex items-center gap-2 text-xs text-slate-600">
+            ✉️ Confirmation will be sent to <span className="font-bold">{email}</span>
+          </div>
+          <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-blue-600">
+            <span>Account created</span>
+            <span className="text-gray-300">›</span>
+            <span>Details submitted</span>
+            <span className="text-gray-300">›</span>
+            <span className="px-2 py-1 rounded-full bg-blue-600 text-white">Admin review</span>
+          </div>
+          <Link
+            href="/landing"
+            className="mt-6 block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition duration-200"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Provider - Step 2: Verification Details
+  if (role === 'Provider' && providerStep === 2) {
+    return (
+      <div className="min-h-screen flex flex-col bg-white font-sans">
+
+        {/* --- Navbar العلوي بلون خلفية #F7F7F7 (يوجّه إلى /landing) --- */}
+        <header className="w-full py-4 px-8 border-b border-gray-100 flex justify-between items-center sticky top-0 z-50" style={{ backgroundColor: '#F7F7F7' }}>
+          <div className="flex items-center gap-4">
+            <Link href="/landing" className="flex items-center">
+              <img
+                src="/WhatsApp Image .jpeg"
+                alt="MedLink Logo"
+                className="h-10 w-auto object-contain cursor-pointer"
+              />
+            </Link>
+            <Link
+              href="/landing"
+              className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
+            >
+              {t.backHome}
+            </Link>
+          </div>
+        </header>
+
+        {/* --- محتوى الصفحة الرئيسي --- */}
+        <div className="flex-grow flex items-center justify-center bg-sky-50/50 p-4 py-8">
+        <div className="max-w-6xl w-full bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+
+          {/* Left Side - Stepper */}
+          <div className="hidden md:flex w-5/12 bg-sky-50/70 p-8 flex-col justify-between border-r border-sky-100">
+            <div>
+              <div className="mb-6 h-12 flex items-center">
+                <img
+                  src="/WhatsApp Image .jpeg"
+                  alt="MedLink Logo"
+                  className="h-10 object-contain"
+                />
+              </div>
+
+              <p className="text-[11px] font-bold text-blue-600 mb-2">Step 2 of 3</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-2 leading-snug">
+                Verify your practice to start receiving patients.
+              </h2>
+              <p className="text-[11px] text-gray-500 mb-8 leading-relaxed">
+                We review every provider before going live so patients can trust who they book with.
+              </p>
+
+              <div className="space-y-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</div>
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-800">Create account</h3>
+                    <p className="text-[10px] text-gray-400">Completed</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-800">Verification details</h3>
+                    <p className="text-[10px] text-gray-400">You are here</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-full bg-white border border-gray-300 text-gray-400 text-xs font-bold flex items-center justify-center shrink-0">3</div>
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-800">Admin review</h3>
+                    <p className="text-[10px] text-gray-400">Up to 48 hours</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Form */}
+          <div className="w-full md:w-7/12 p-8 sm:p-10 bg-white">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Verification Details</h2>
+            <p className="text-xs text-gray-500 mb-6">Provide your official business information.</p>
+
+            {errorMessage && (
+              <div className="mb-4 p-3.5 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 font-medium leading-relaxed">
+                ⚠️ {errorMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleProviderVerificationSubmit} className="space-y-4" noValidate autoComplete="off">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Type *</label>
+                  <select
+                    value={serviceType}
+                    onChange={(e) => {
+                      setServiceType(e.target.value);
+                      if (fieldErrors.serviceType) setFieldErrors({ ...fieldErrors, serviceType: '' });
+                    }}
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.serviceType ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  >
+                    <option value="">Select service type</option>
+                    {PROVIDER_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.serviceType && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceType}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Name *</label>
+                  <input
+                    type="text"
+                    value={serviceName}
+                    onChange={(e) => {
+                      setServiceName(e.target.value);
+                      if (fieldErrors.serviceName) setFieldErrors({ ...fieldErrors, serviceName: '' });
+                    }}
+                    placeholder="e.g. Al Nour Medical Center"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.serviceName ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.serviceName && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.serviceName}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Location *</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (fieldErrors.address) setFieldErrors({ ...fieldErrors, address: '' });
+                    }}
+                    placeholder="e.g. Cairo"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.address ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.address && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.address}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Service Contact Phone *</label>
+                  <input
+                    type="tel"
+                    value={servicePhoneNumber}
+                    onChange={(e) => {
+                      setServicePhoneNumber(e.target.value);
+                      if (fieldErrors.servicePhoneNumber) setFieldErrors({ ...fieldErrors, servicePhoneNumber: '' });
+                    }}
+                    placeholder="+20 2 1234 5678"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.servicePhoneNumber ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.servicePhoneNumber && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.servicePhoneNumber}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Postal Code *</label>
+                  <input
+                    type="text"
+                    value={postalCode}
+                    onChange={(e) => {
+                      setPostalCode(e.target.value);
+                      if (fieldErrors.postalCode) setFieldErrors({ ...fieldErrors, postalCode: '' });
+                    }}
+                    placeholder="e.g. 11511"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.postalCode ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.postalCode && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.postalCode}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">Tax Number *</label>
+                  <input
+                    type="text"
+                    value={taxNumber}
+                    onChange={(e) => {
+                      setTaxNumber(e.target.value);
+                      if (fieldErrors.taxNumber) setFieldErrors({ ...fieldErrors, taxNumber: '' });
+                    }}
+                    placeholder="e.g. 123-456-789"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.taxNumber ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.taxNumber && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.taxNumber}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1.5">License Document *</label>
+                <label
+                  htmlFor="licenseFile"
+                  className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-8 cursor-pointer bg-sky-50/30 hover:bg-sky-50/60 transition ${
+                    fieldErrors.licenseFile ? 'border-red-400' : 'border-sky-200'
+                  }`}
+                >
+                  <span className="text-2xl text-blue-500">⬆️</span>
+                  <span className="text-xs font-bold text-gray-800">
+                    {licenseFile ? licenseFile.name : 'Upload your medical license'}
+                  </span>
+                  <span className="text-[10px] text-gray-400">PDF, JPG or PNG, up to 5 MB</span>
+                  <span className="mt-1 px-4 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-full">
+                    Choose File
+                  </span>
+                </label>
+                <input
+                  id="licenseFile"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => {
+                    setLicenseFile(e.target.files?.[0] ?? null);
+                    if (fieldErrors.licenseFile) setFieldErrors({ ...fieldErrors, licenseFile: '' });
+                  }}
+                />
+                {fieldErrors.licenseFile && (
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.licenseFile}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setProviderStep(1)}
+                  className="w-1/2 py-3.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition duration-200"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-1/2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition duration-200 shadow-md shadow-blue-600/10"
+                >
+                  {loading ? 'Submitting...' : 'Submit for Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </div>
+
+        {/* --- Footer السفلي الاحترافي والمتعدد الأعمدة --- */}
+        <footer className="w-full border-t border-gray-100 bg-white py-10 px-8 mt-auto">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+
+            <div className="md:col-span-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <img
+                  src="/WhatsApp Image .jpeg"
+                  alt="MedLink Logo"
+                  className="h-7 w-auto object-contain"
+                />
+              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                AI-powered healthcare platform connecting patients with top providers and keeping health history seamlessly organized.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Quick Links</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/landing" className="hover:text-teal-600 transition">Home</Link></li>
+                <li><Link href="/login" className="hover:text-teal-600 transition">Log In</Link></li>
+                <li><Link href="/register" className="hover:text-teal-600 transition">Sign Up</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Support</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/help" className="hover:text-teal-600 transition">Help Center</Link></li>
+                <li><Link href="/contact" className="hover:text-teal-600 transition">Contact Support</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Legal</h4>
+              <ul className="space-y-2 text-xs text-gray-500">
+                <li><Link href="/privacy" className="hover:text-teal-600 transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-teal-600 transition">Terms of Service</Link></li>
+              </ul>
+            </div>
+
+          </div>
+
+          <div className="max-w-6xl mx-auto pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+            <p>© 2026 <span className="font-bold text-sky-900">MedLink</span>. All rights reserved.</p>
+            <p className="text-[11px]">Better access. Healthier tomorrows.</p>
+          </div>
+        </footer>
+
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
-      
+
       {/* --- Navbar العلوي بلون خلفية #F7F7F7 (يوجّه إلى /landing) --- */}
       <header className="w-full py-4 px-8 border-b border-gray-100 flex justify-between items-center sticky top-0 z-50" style={{ backgroundColor: '#F7F7F7' }}>
         <div className="flex items-center gap-4">
           <Link href="/landing" className="flex items-center">
-            <img 
-              src="/WhatsApp Image .jpeg" 
-              alt="MedLink Logo" 
+            <img
+              src="/WhatsApp Image .jpeg"
+              alt="MedLink Logo"
               className="h-10 w-auto object-contain cursor-pointer"
             />
           </Link>
-          <Link 
-            href="/landing" 
+          <Link
+            href="/landing"
             className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
           >
             {t.backHome}
           </Link>
-        </div>
-
-        {/* اختيار اللغة الحقيقي والتفاعلي */}
-        <div className="flex items-center">
-          <select 
-            onChange={handleLanguageChange}
-            value={lang}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white focus:outline-none cursor-pointer"
-          >
-            <option value="en">EN 🌐</option>
-            <option value="ar">AR 🌐</option>
-          </select>
         </div>
       </header>
 
@@ -258,11 +782,10 @@ export default function RegisterPage() {
           {/* Left Side - Logo, Info & Illustration */}
           <div className="hidden md:flex w-5/12 bg-sky-50/70 p-8 flex-col justify-between border-r border-sky-100">
             <div>
-              {/* MedLink Image Logo */}
               <div className="mb-6 h-12 flex items-center">
-                <img 
-                  src="/WhatsApp Image .jpeg" 
-                  alt="MedLink Logo" 
+                <img
+                  src="/WhatsApp Image .jpeg"
+                  alt="MedLink Logo"
                   className="h-10 object-contain"
                 />
               </div>
@@ -274,7 +797,6 @@ export default function RegisterPage() {
                 {t.welcomeSubtitle}
               </p>
 
-              {/* Features List */}
               <div className="space-y-3 mb-6">
                 <div className="flex items-start gap-3">
                   <div className="p-1.5 bg-white rounded-xl shadow-sm text-teal-600 text-sm">🧠</div>
@@ -299,23 +821,15 @@ export default function RegisterPage() {
                     <p className="text-[10px] text-gray-400">{t.bookDesc}</p>
                   </div>
                 </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-white rounded-xl shadow-sm text-teal-600 text-sm">📁</div>
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-800">{t.history}</h3>
-                    <p className="text-[10px] text-gray-400">{t.historyDesc}</p>
-                  </div>
-                </div>
               </div>
             </div>
 
             {/* Bottom Healthcare Illustration */}
             <div className="mt-4 flex flex-col items-center">
               <div className="w-full relative h-40">
-                <img 
-                  src="/WhatsApp Image 2026-10-19 at 17.50.37.jpeg" 
-                  alt="Healthcare Illustration" 
+                <img
+                  src="/WhatsApp Image 2026-10-19 at 17.50.37.jpeg"
+                  alt="Healthcare Illustration"
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -334,7 +848,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <button
                 type="button"
-                onClick={() => setRole('Patient')}
+                onClick={() => selectRole('Patient')}
                 className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                   role === 'Patient'
                     ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
@@ -350,7 +864,7 @@ export default function RegisterPage() {
 
               <button
                 type="button"
-                onClick={() => setRole('Provider')}
+                onClick={() => selectRole('Provider')}
                 className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all ${
                   role === 'Provider'
                     ? 'border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/10'
@@ -377,6 +891,7 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleRegister} className="space-y-4" noValidate autoComplete="off">
+
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-800 mb-1.5">{t.fullName}</label>
@@ -398,6 +913,27 @@ export default function RegisterPage() {
                   <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.fullName}</p>
                 )}
               </div>
+
+              {role === 'Provider' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">National ID Number *</label>
+                  <input
+                    type="text"
+                    value={nationalId}
+                    onChange={(e) => {
+                      setNationalId(e.target.value);
+                      if (fieldErrors.nationalId) setFieldErrors({ ...fieldErrors, nationalId: '' });
+                    }}
+                    placeholder="14-digit national ID"
+                    className={`w-full px-3.5 py-3 rounded-xl border text-xs focus:outline-none bg-gray-50/30 text-gray-800 ${
+                      fieldErrors.nationalId ? 'border-red-500 bg-red-50/10' : 'border-gray-200 focus:border-teal-500'
+                    }`}
+                  />
+                  {fieldErrors.nationalId && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.nationalId}</p>
+                  )}
+                </div>
+              )}
 
               {/* Email Address */}
               <div>
@@ -531,24 +1067,33 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="w-full py-3.5 bg-sky-900 hover:bg-sky-950 text-white rounded-xl text-xs font-bold transition duration-200 shadow-md shadow-sky-900/10 mt-2"
               >
-                {loading ? t.signingUp : t.signUpBtn}
+                {role === 'Provider' ? 'Continue' : (loading ? t.signingUp : t.signUpBtn)}
               </button>
             </form>
 
-            {/* OR Divider */}
-            <div className="relative flex py-4 items-center">
-              <div className="flex-grow border-t border-gray-100"></div>
-              <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-semibold">{t.orText}</span>
-              <div className="flex-grow border-t border-gray-100"></div>
-            </div>
+            {role !== 'Provider' && (
+              <>
+                {/* OR Divider */}
+                <div className="relative flex py-4 items-center">
+                  <div className="flex-grow border-t border-gray-100"></div>
+                  <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-semibold">{t.orText}</span>
+                  <div className="flex-grow border-t border-gray-100"></div>
+                </div>
 
-            {/* Google Button */}
-            <button
-              type="button"
-              className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 transition duration-200"
-            >
-              <span>🌐</span> {t.googleBtn}
-            </button>
+                {/* Google Button */}
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    className="w-full py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2 pointer-events-none"
+                  >
+                    <span>🌐</span> {googleLoading ? 'Connecting...' : t.googleBtn}
+                  </button>
+                  <div ref={googleButtonRef} className="absolute inset-0 z-10 overflow-hidden opacity-0" />
+                </div>
+              </>
+            )}
 
             {/* Login Link */}
             <p className="text-center text-xs text-gray-500 mt-6">
@@ -558,19 +1103,18 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
-
         </div>
       </div>
 
       {/* --- Footer السفلي الاحترافي والمتعدد الأعمدة --- */}
       <footer className="w-full border-t border-gray-100 bg-white py-10 px-8 mt-auto">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          
+
           <div className="md:col-span-1 space-y-3">
             <div className="flex items-center gap-2">
-              <img 
-                src="/WhatsApp Image .jpeg" 
-                alt="MedLink Logo" 
+              <img
+                src="/WhatsApp Image .jpeg"
+                alt="MedLink Logo"
                 className="h-7 w-auto object-contain"
               />
             </div>

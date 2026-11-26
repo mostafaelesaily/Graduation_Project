@@ -8,11 +8,12 @@ namespace MedLink.Application.DTOs.Common.identity
 {
     public class RegisterProviderRequest : RegisterDto
     {
-        public string ProviderName { get; set; }   // ← جديد
-
+        public string ServiceName { get; set; }   
         public string Address { get; set; }
         public string postalCode { get; set; }
         public string taxNumber { get; set; }
+        public string ServicePhoneNumber { get; set; }
+        public string NationalIdNumber { get; set; }
         public IFormFile LicenseFile { get; set; }
         public ProviderType ProviderType { get; set; }
 

@@ -28,14 +28,34 @@ namespace MedLink.infrastructure.Specifications
             }
             else if (specification.OrderByDescending is not null)
             {
-                query = query.OrderByDescending(
+                var orderedQuery = query.OrderByDescending(
                 specification.OrderByDescending);
+
+                if (specification.ThenByDescending is not null)
+                {
+                    orderedQuery = orderedQuery.ThenByDescending(
+                        specification.ThenByDescending);
+                }
+
+                query = orderedQuery;
             }
             if (specification.IsPagingEnabled)
             {
                 query = query
                .Skip(specification.Skip)
                .Take(specification.Take);
+            }
+            return query;
+        }
+
+        public static IQueryable<T> GetCountQuery(
+            IQueryable<T> inputQuery,
+            ISpecification<T> specification)
+        {
+            var query = inputQuery;
+            if (specification.Criteria is not null)
+            {
+                query = query.Where(specification.Criteria);
             }
             return query;
         }

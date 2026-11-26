@@ -2,6 +2,7 @@
 using MedLink.Application.Interfaces.Common;
 using MedLink.infrastructure.Data;
 using MedLink.infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MedLink.infrastructure.UnitOfWork
@@ -16,7 +17,7 @@ namespace MedLink.infrastructure.UnitOfWork
             this.appDbContext = appDbContext;
         }
 
-        public async Task BeginTransactionAsync()
+        public async Task BeginTransactionAsync(System.Data.IsolationLevel isolationLevel = System.Data.IsolationLevel.ReadCommitted)
         {
             if (transaction is not null)
             {
@@ -24,7 +25,7 @@ namespace MedLink.infrastructure.UnitOfWork
                     "A transaction is already active.");
             }
 
-            transaction = await appDbContext.Database.BeginTransactionAsync();
+            transaction = await appDbContext.Database.BeginTransactionAsync(isolationLevel, default);
         }
 
         public async Task CommitTransactionAsync()

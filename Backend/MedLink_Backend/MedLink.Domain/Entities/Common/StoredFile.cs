@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MedLink.Domain.Entities.Provider;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +12,7 @@ namespace MedLink.Domain.Entities.Common
         public string FilePath { get; set; }
         public string FileType { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        public Guid ProviderProfileId { get; set; }
+        public ProviderProfile ProviderProfile { get; set; }
     }
 }

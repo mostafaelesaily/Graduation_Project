@@ -15,6 +15,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using MedLink.Domain.Enums;
+using MedLink.Application.DTOs.Common.identityDTOs;
+using MedLink.Domain.Entities.Provider;
 
 namespace MedLink.Application.Services.Common
 {
@@ -28,7 +30,8 @@ namespace MedLink.Application.Services.Common
             UserManager<AppUser> userManager,
             IMailService mailService,
             IFileService fileService,
-            IUnitOfWork unitOfWork
+            IUnitOfWork unitOfWork,
+            IGoogleAuthService googleAuthService
         )
         {
             this.mapper = mapper;
@@ -38,16 +41,18 @@ namespace MedLink.Application.Services.Common
             this.mailService = mailService;
             this.fileService = fileService;
             this.unitOfWork = unitOfWork;
+            this.googleAuthService = googleAuthService;
 
         }
 
-    
+
         private readonly IMapper mapper;
         private readonly IConfiguration configuration;
         private readonly ILogger<AccountService> logger;
         private readonly UserManager<AppUser> userManager;
         private readonly IMailService mailService;
         private readonly IFileService fileService;
+        private readonly IGoogleAuthService googleAuthService;
 
         private readonly IUnitOfWork unitOfWork;
 
@@ -95,9 +100,9 @@ namespace MedLink.Application.Services.Common
             var user = await userManager.Users.FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == genrateRefreshTokenDto.Token));
             if (user == null) throw new UnauthorizedException("Invalid token");
             var refreshToken = user.RefreshTokens.FirstOrDefault(t => t.Token == genrateRefreshTokenDto.Token);
-            if (refreshToken == null || refreshToken.ExpiresOn < DateTime.UtcNow || refreshToken.revokedOn != null)
+            if (refreshToken == null || refreshToken.ExpiresOn < DateTime.UtcNow || refreshToken.RevokedOn != null)
             { throw new UnauthorizedException("Invalid token"); }
-            refreshToken.revokedOn = DateTime.UtcNow;
+            refreshToken.RevokedOn = DateTime.UtcNow;
             var newAccessToken = await GenrateAccessToken(user);
             var newRefreshToken = await GenrateRefreshToken();
             user.RefreshTokens.Add(newRefreshToken);
@@ -129,7 +134,7 @@ namespace MedLink.Application.Services.Common
                 logger.LogWarning("Login attempt failed for user with email: {Email}. Email not confirmed.", loginDto.Email);
                 throw new UnauthorizedException("Email not confirmed. Please confirm your email before logging in.");
             }
-            if (!user.IsActice)
+            if (!user.IsActive)
             {
                 logger.LogWarning("Login attempt failed for user with email: {Email}. Account is not active.", loginDto.Email);
                 throw new UnauthorizedException("Your account is not active yet. Please wait for admin approval.");
@@ -211,7 +216,7 @@ namespace MedLink.Application.Services.Common
             }
             foreach (var refreshToken in user.RefreshTokens)
             {
-                refreshToken.revokedOn = DateTime.UtcNow;
+                refreshToken.RevokedOn = DateTime.UtcNow;
             }
             var result = await userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -264,19 +269,21 @@ namespace MedLink.Application.Services.Common
                     throw new BadRequestException("Failed to assign provider role. Errors: " + errors);
                 }
 
+                var providerProfile = mapper.Map<ProviderProfile>(providerRequest);
+                providerProfile.userId = user.Id;
+                await unitOfWork.Repository<ProviderProfile>().AddAsync(providerProfile);
+
                 var licenseFilePath = await fileService.UploadFileAsync(providerRequest.LicenseFile, "ProviderLicenses");
                 var storedFile = new StoredFile
                 {
                     FileName = providerRequest.LicenseFile.FileName,
                     FilePath = licenseFilePath,
-                    FileType = providerRequest.LicenseFile.ContentType
+                    FileType = providerRequest.LicenseFile.ContentType,
+                    ProviderProfileId = providerProfile.Id
                 };
                 await unitOfWork.Repository<StoredFile>().AddAsync(storedFile);
 
-                var providerProfile = mapper.Map<ProviderProfile>(providerRequest);
-                providerProfile.userId = user.Id;
                 providerProfile.LicenseFileId = storedFile.Id;
-                await unitOfWork.Repository<ProviderProfile>().AddAsync(providerProfile);
 
                 var providerLocation = mapper.Map<ProviderLocations>(providerRequest);
                 providerLocation.ProviderProfileId = providerProfile.Id;
@@ -324,12 +331,16 @@ namespace MedLink.Application.Services.Common
                 throw new BadRequestException("Password is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.phoneNumber))
                 throw new BadRequestException("Phone number is required.");
-            if (string.IsNullOrWhiteSpace(providerRequest.ProviderName))
-                throw new BadRequestException("Provider name is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.NationalIdNumber))
+                throw new BadRequestException("National ID number is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.ServiceName))
+                throw new BadRequestException("Service name is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.Address))
                 throw new BadRequestException("Address is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.postalCode))
                 throw new BadRequestException("Postal code is required.");
+            if (string.IsNullOrWhiteSpace(providerRequest.ServicePhoneNumber))
+                throw new BadRequestException("Service phone number is required.");
             if (string.IsNullOrWhiteSpace(providerRequest.taxNumber))
                 throw new BadRequestException("Tax number is required.");
 
@@ -346,6 +357,87 @@ namespace MedLink.Application.Services.Common
 
             if (!Enum.IsDefined(typeof(ProviderType), providerRequest.ProviderType))
                 throw new BadRequestException("Invalid provider type.");
+        }
+
+        public async Task<AuthenticationResponseDto> GoogleSignInAsync(GoogleLoginDto request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (string.IsNullOrWhiteSpace(request.idToken))
+                throw new BadRequestException("Google ID token is required.");
+
+            logger.LogInformation("Attempting Google sign-in.");
+
+            var googleUser = await googleAuthService.ValidateIdTokenAsync(request.idToken);
+
+            var user = await userManager.FindByLoginAsync("Google", googleUser.Subject);
+
+            if (user == null)
+            {
+                var existingEmailUser = await userManager.FindByEmailAsync(googleUser.Email);
+                if (existingEmailUser != null)
+                {
+                    logger.LogWarning("Google sign-in attempted for an email already registered without a Google link: {Email}", googleUser.Email);
+                    throw new ConflictException(
+                        "An account with this email already exists. Please log in with your password, then link your Google account.");
+                }
+
+                user = new AppUser
+                {
+                    UserName = googleUser.Email,
+                    Email = googleUser.Email,
+                    EmailConfirmed = true,
+                    IsActive = true
+                };
+
+                var createResult = await userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Google sign-in failed to create user for email: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to create account. Errors: " + errors);
+                }
+
+                var addLoginResult = await userManager.AddLoginAsync(user, new UserLoginInfo("Google", googleUser.Subject, "Google"));
+                if (!addLoginResult.Succeeded)
+                {
+                    await userManager.DeleteAsync(user);
+                    var errors = string.Join(", ", addLoginResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Failed to link Google login for email: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to link Google account. Errors: " + errors);
+                }
+
+                var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
+                if (!roleResult.Succeeded)
+                {
+                    await userManager.DeleteAsync(user);
+                    var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Failed to assign role for Google sign-in user: {Email}. Errors: {Errors}", googleUser.Email, errors);
+                    throw new BadRequestException("Failed to assign role. Errors: " + errors);
+                }
+
+                logger.LogInformation("New user created via Google sign-in with email: {Email}", googleUser.Email);
+            }
+
+            if (!user.IsActive)
+            {
+                logger.LogWarning("Google sign-in blocked for inactive account: {Email}", user.Email);
+                throw new UnauthorizedException("Your account is not active yet. Please wait for admin approval.");
+            }
+
+            var accessToken = await GenrateAccessToken(user);
+            var refreshToken = await GenrateRefreshToken();
+
+            user.RefreshTokens ??= new List<RefreshTokens>();
+            user.RefreshTokens.Add(refreshToken);
+            await userManager.UpdateAsync(user);
+
+            return new AuthenticationResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpireOn = DateTime.UtcNow.AddHours(3),
+                Message = "Google sign-in successful"
+            };
         }
     }
 }

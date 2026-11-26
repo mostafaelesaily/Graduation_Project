@@ -25,6 +25,7 @@ namespace MedLink.Test.Services
         private readonly Mock<IMailService> mailServiceMock = new();
         private readonly Mock<IFileService> fileServiceMock = new();
         private readonly Mock<IUnitOfWork> unitOfWorkMock = new();
+        private readonly Mock<IGoogleAuthService> googleService = new();
         private readonly AccountService sut;
 
         public AccountServiceTest()
@@ -44,7 +45,9 @@ namespace MedLink.Test.Services
                 userManagerMock.Object,
                 mailServiceMock.Object,
                 fileServiceMock.Object,
-                unitOfWorkMock.Object);
+                unitOfWorkMock.Object,
+                googleService.Object
+                );
         }
 
         // ---------- Helpers ----------
@@ -75,10 +78,12 @@ namespace MedLink.Test.Services
                 Email = "lab@medlink.com",
                 phoneNumber = "01012345678",
                 Password = "Test@1234",
-                ProviderName = "Al-Noor Lab",
+                NationalIdNumber = "12345678901234",
+                ServiceName = "Al-Noor Lab",
                 Address = "12 El-Geish St, Tanta",
                 postalCode = "31511",
                 taxNumber = "123456789",
+                ServicePhoneNumber = "0403123456",
                 ProviderType = ProviderType.Lab,
                 LicenseFile = fileMock.Object
             };
@@ -156,7 +161,7 @@ namespace MedLink.Test.Services
                 Token = "revoked-token",
                 CreatedOn = DateTime.UtcNow.AddDays(-1),
                 ExpiresOn = DateTime.UtcNow.AddDays(6),
-                revokedOn = DateTime.UtcNow
+                RevokedOn = DateTime.UtcNow
             });
             userManagerMock.Setup(x => x.Users).Returns(new List<AppUser> { user }.AsTestAsyncQueryable());
 
@@ -182,7 +187,7 @@ namespace MedLink.Test.Services
 
             var result = await sut.HandleRefreshTokenAsync(new GenrateRefreshToken { Token = "valid-token" });
 
-            Assert.NotNull(oldToken.revokedOn);
+            Assert.NotNull(oldToken.RevokedOn);
             Assert.False(string.IsNullOrWhiteSpace(result.AccessToken));
             Assert.False(string.IsNullOrWhiteSpace(result.RefreshToken));
             Assert.NotEqual("valid-token", result.RefreshToken);
@@ -361,7 +366,7 @@ namespace MedLink.Test.Services
 
             await sut.Logout(user.Id);
 
-            Assert.All(user.RefreshTokens, t => Assert.NotNull(t.revokedOn));
+            Assert.All(user.RefreshTokens, t => Assert.NotNull(t.RevokedOn));
             userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
         }
 
