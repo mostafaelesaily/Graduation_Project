@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
-import 'package:medlink/Features/Home/Presentation/Models/home_models.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Entites/provider_profile.dart';
 
 class TopProvidersSection extends StatelessWidget {
-  final List<FeaturedProvider> providers;
-  final String area;
-  final ValueChanged<FeaturedProvider>? onBookSlot;
+  final List<ProviderProfile> providers;
+  final bool isLoading;
+  final bool hasError;
+  final VoidCallback? onRetry;
+  final ValueChanged<ProviderProfile>? onBookSlot;
 
   const TopProvidersSection({
     super.key,
     required this.providers,
-    this.area = 'Downtown',
+    this.isLoading = false,
+    this.hasError = false,
+    this.onRetry,
     this.onBookSlot,
   });
 
@@ -30,33 +34,51 @@ class TopProvidersSection extends StatelessWidget {
         ),
         SizedBox(height: 2.h),
         Text(
-          'Available today around $area',
+          'Verified providers around Cairo',
           style: TextStyle(color: ColorsManager.fadedText, fontSize: 14.sp),
         ),
         SizedBox(height: 12.h),
-        SizedBox(
-          height: 292.h,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            itemCount: providers.length,
-            separatorBuilder: (_, _) => SizedBox(width: 14.w),
-            itemBuilder: (context, index) {
-              final provider = providers[index];
-              return _ProviderCard(
-                provider: provider,
-                onBookSlot: () => onBookSlot?.call(provider),
-              );
-            },
-          ),
-        ),
+        SizedBox(height: 232.h, child: _buildContent()),
       ],
+    );
+  }
+
+  Widget _buildContent() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (hasError) {
+      return Center(
+        child: TextButton(
+          onPressed: onRetry,
+          child: const Text('Could not load providers. Tap to retry.'),
+        ),
+      );
+    }
+
+    if (providers.isEmpty) {
+      return const Center(child: Text('No providers found.'));
+    }
+
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      itemCount: providers.length,
+      separatorBuilder: (_, _) => SizedBox(width: 14.w),
+      itemBuilder: (context, index) {
+        final provider = providers[index];
+        return _ProviderCard(
+          provider: provider,
+          onBookSlot: () => onBookSlot?.call(provider),
+        );
+      },
     );
   }
 }
 
 class _ProviderCard extends StatelessWidget {
-  final FeaturedProvider provider;
+  final ProviderProfile provider;
   final VoidCallback onBookSlot;
 
   const _ProviderCard({required this.provider, required this.onBookSlot});
@@ -81,58 +103,22 @@ class _ProviderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16.r),
-            child: Stack(
-              children: [
-                Container(
-                  height: 108.h,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        ColorsManager.primaryColor.withValues(alpha: 0.35),
-                        ColorsManager.accentTeal.withValues(alpha: 0.35),
-                      ],
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    size: 60.sp,
-                  ),
-                ),
-                Positioned(
-                  top: 8.h,
-                  left: 8.w,
-                  child: _Badge(
-                    leading: Icon(
-                      Icons.star_rounded,
-                      color: ColorsManager.star,
-                      size: 14.sp,
-                    ),
-                    text: '${provider.rating} (${provider.reviewsCount})',
-                    textColor: ColorsManager.textDark,
-                    background: Colors.white.withValues(alpha: 0.92),
-                  ),
-                ),
-                Positioned(
-                  bottom: 8.h,
-                  right: 8.w,
-                  child: _Badge(
-                    text: '${provider.distanceMiles} mi',
-                    textColor: Colors.white,
-                    background: ColorsManager.primaryColor,
-                  ),
-                ),
-              ],
+          Container(
+            height: 80.h,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: ColorsManager.softBlue,
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Icon(
+              Icons.local_hospital_outlined,
+              color: ColorsManager.primaryColor,
+              size: 40.sp,
             ),
           ),
           SizedBox(height: 10.h),
           Text(
-            provider.name,
+            provider.serviceName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -143,41 +129,10 @@ class _ProviderCard extends StatelessWidget {
           ),
           SizedBox(height: 2.h),
           Text(
-            provider.specialty,
+            provider.address,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: ColorsManager.fadedText, fontSize: 13.sp),
-          ),
-          SizedBox(height: 10.h),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-            decoration: BoxDecoration(
-              color: ColorsManager.primaryBackgroundColor,
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.event_available_outlined,
-                  color: ColorsManager.primaryColor,
-                  size: 16.sp,
-                ),
-                SizedBox(width: 6.w),
-                Expanded(
-                  child: Text(
-                    'Next: ${provider.nextSlot}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ColorsManager.primaryColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
           const Spacer(),
           SizedBox(
@@ -197,45 +152,6 @@ class _ProviderCard extends StatelessWidget {
                 'Book Slot',
                 style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final Widget? leading;
-  final String text;
-  final Color textColor;
-  final Color background;
-
-  const _Badge({
-    this.leading,
-    required this.text,
-    required this.textColor,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (leading != null) ...[leading!, SizedBox(width: 3.w)],
-          Text(
-            text,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ],

@@ -1,11 +1,44 @@
 import 'dart:convert';
 
 import 'package:medlink/Core/Network/api_client.dart';
+import 'package:medlink/Features/ProviderProfile/Data/models/provider_profile_model.dart';
 
 class ProviderRemoteDataSource {
   final ApiClient client;
 
   ProviderRemoteDataSource({required this.client});
+
+  /// The API has no "list providers" endpoint, so this uses the unified search.
+  /// The "%" keyword matches every service, around central Cairo.
+  Future<List<ProviderProfileModel>> getProviders() async {
+    const path = '/api/Search/UnifiedMedicalSearch';
+
+    final response = await client.post(
+      path,
+      body: {
+        'keyword': '%',
+        'latitude': 30.0444,
+        'longitude': 31.2357,
+        'radiusInMeters': 50000,
+        'pageNumber': 1,
+        'pageSize': 10,
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Loading providers failed: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded['metadata']['internalSearchSucceeded'] == false) {
+      throw Exception('Loading providers failed');
+    }
+
+    final items = decoded['results']['medlinkProviders']['items'] as List;
+
+    return items.map((item) => ProviderProfileModel.fromJson(item)).toList();
+  }
 
   Future<bool> isSlotAvailable(String providerId, DateTime slot) async {
     const path = '/api/Booking/availability';

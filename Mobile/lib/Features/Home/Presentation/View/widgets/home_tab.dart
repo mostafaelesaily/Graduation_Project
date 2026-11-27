@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Features/Home/Presentation/Models/home_models.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/ai_navigator_card.dart';
@@ -8,7 +9,9 @@ import 'package:medlink/Features/Home/Presentation/View/widgets/home_header.dart
 import 'package:medlink/Features/Home/Presentation/View/widgets/top_providers_section.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/upcoming_care_section.dart';
 import 'package:go_router/go_router.dart';
-import 'package:medlink/Features/ProviderProfile/Domain/Entites/provider_profile.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_providers_cubit.dart';
+import 'package:medlink/Features/Home/Presentation/Cubit/home_providers_state.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Repos/provider_repository.dart';
 
 class HomeTab extends StatelessWidget {
   final String userName;
@@ -32,16 +35,21 @@ class HomeTab extends StatelessWidget {
           SizedBox(height: 24.h),
           const CareServicesGrid(services: HomeMockData.services),
           SizedBox(height: 24.h),
-          TopProvidersSection(
-            providers: HomeMockData.providers,
-            onBookSlot: (_) => context.push(
-              '/provider',
-              extra: const ProviderProfile(
-                id: 'B90B8107-0D0A-4AE6-8A4B-75A4E036E260',
-                serviceName: 'Al Salam Hospital',
-                address: 'Heliopolis, Cairo',
-                phoneNumber: '01300000002',
-              ),
+          BlocProvider(
+            create: (context) => HomeProvidersCubit(
+              providerRepository: context.read<ProviderRepository>(),
+            )..load(),
+            child: BlocBuilder<HomeProvidersCubit, HomeProvidersState>(
+              builder: (context, state) {
+                return TopProvidersSection(
+                  providers: state.providers,
+                  isLoading: state.status == HomeProvidersStatus.loading,
+                  hasError: state.status == HomeProvidersStatus.failure,
+                  onRetry: () => context.read<HomeProvidersCubit>().load(),
+                  onBookSlot: (provider) =>
+                      context.push('/provider', extra: provider),
+                );
+              },
             ),
           ),
         ],

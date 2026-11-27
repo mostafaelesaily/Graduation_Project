@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
 import 'package:medlink/Features/ProviderProfile/Domain/Entites/provider_profile.dart';
 import 'package:medlink/Features/ProviderProfile/Presentation/View/widgets/section_card.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileHeader extends StatelessWidget {
@@ -63,9 +63,9 @@ class ProfileHeader extends StatelessWidget {
               SizedBox(width: 10.w),
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.copy_outlined,
-                  label: 'Copy info',
-                  onPressed: () => _copy(context),
+                  icon: Icons.share_outlined,
+                  label: 'Share',
+                  onPressed: _share,
                 ),
               ),
             ],
@@ -83,18 +83,14 @@ class ProfileHeader extends StatelessWidget {
     }
   }
 
-  Future<void> _copy(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _share() async {
     final text = [
       profile.serviceName,
       profile.address,
       profile.phoneNumber,
     ].where((part) => part.isNotEmpty).join('\n');
 
-    await Clipboard.setData(ClipboardData(text: text));
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Provider info copied')),
-    );
+    await SharePlus.instance.share(ShareParams(text: text));
   }
 }
 
