@@ -27,8 +27,10 @@ builder.Services.AddFileService();
 builder.Services.AddCacheService(builder.Configuration);
 builder.Services.AddGoogleAuthService();
 builder.Services.AddGeminiMedicalSearchService();
+builder.Services.AddGeminiChatbotService();
 builder.Services.AddAppDI();
 builder.Services.AddMedicalSearchDI();
+builder.Services.AddChatbotDI();
 
 var app = builder.Build();
 

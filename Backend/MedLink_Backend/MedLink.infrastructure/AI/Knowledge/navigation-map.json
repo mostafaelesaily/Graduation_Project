@@ -1,0 +1,239 @@
+{
+  "_about": "MedLink screens for the AI assistant. The assistant returns a screen key in suggested_actions; the web/mobile app maps it to its own route. Web routes and mobile tabs are placeholders: the frontend and mobile teams should replace them with the real routes.",
+  "version": "1.0",
+  "mobile_bottom_navigation": ["Home", "Search", "Appointments", "Records", "Profile"],
+  "screens": {
+    "common.landing": {
+      "title": "Landing Page",
+      "roles": ["guest"],
+      "web_route": "/",
+      "mobile": "Onboarding",
+      "description": "Hero message, quick search, AI assistant preview, six service shortcuts and the steps Search, Book, Get Care."
+    },
+    "common.signup": {
+      "title": "Create Account",
+      "roles": ["guest"],
+      "web_route": "/signup",
+      "mobile": "Get Started > Create Account",
+      "description": "Choose Patient / User or Provider; name, email, Egyptian phone, password, or Continue with Google."
+    },
+    "common.verify_email": {
+      "title": "Verify Email",
+      "roles": ["guest"],
+      "web_route": "/verify-email",
+      "mobile": "Verify Email",
+      "description": "Open the link sent to the email; resend or change the address."
+    },
+    "common.login": {
+      "title": "Log In",
+      "roles": ["guest"],
+      "web_route": "/login",
+      "mobile": "Log In",
+      "description": "Email and password, remember me, forgot password, Google sign-in."
+    },
+    "common.forgot_password": {
+      "title": "Forgot Password",
+      "roles": ["guest"],
+      "web_route": "/forgot-password",
+      "mobile": "Log In > Forgot password",
+      "description": "Send a password reset link to the email."
+    },
+    "common.notifications": {
+      "title": "Notifications",
+      "roles": ["patient", "provider"],
+      "web_route": "/notifications",
+      "mobile": "Bell icon (top bar)",
+      "description": "Booking updates, reminders and verification results."
+    },
+    "common.help": {
+      "title": "Help & Support",
+      "roles": ["patient", "provider"],
+      "web_route": "/help",
+      "mobile": "Profile > Help & Support",
+      "description": "Contact MedLink support."
+    },
+
+    "patient.home": {
+      "title": "Patient Home",
+      "roles": ["patient"],
+      "web_route": "/home",
+      "mobile": "Home tab",
+      "description": "Greeting, search bar with AI Assistant switch, service shortcuts, recommended providers and next appointment."
+    },
+    "patient.search": {
+      "title": "Search Providers",
+      "roles": ["patient", "guest"],
+      "web_route": "/search",
+      "mobile": "Search tab",
+      "params": ["specialty", "providerType", "area"],
+      "description": "Search by specialty, provider type, area or name with filters."
+    },
+    "patient.nearby_map": {
+      "title": "Nearby Providers (Map)",
+      "roles": ["patient", "guest"],
+      "web_route": "/search/map",
+      "mobile": "Search tab > Map",
+      "description": "Nearest verified providers on Google Maps sorted by distance."
+    },
+    "patient.ai_search": {
+      "title": "AI Search",
+      "roles": ["patient"],
+      "web_route": "/ai-search",
+      "mobile": "Search tab > AI Search",
+      "description": "Type or speak symptoms; the AI suggests a specialty and shows matching verified providers."
+    },
+    "patient.ai_assistant": {
+      "title": "AI Health Assistant (Chat)",
+      "roles": ["patient"],
+      "web_route": "/ai-assistant",
+      "mobile": "Robot icon",
+      "description": "Chat about symptoms and MedLink help (next phase)."
+    },
+    "patient.provider_profile": {
+      "title": "Provider Profile",
+      "roles": ["patient", "guest"],
+      "web_route": "/providers/{providerId}",
+      "mobile": "Provider Profile",
+      "params": ["providerId"],
+      "description": "Verified badge, services with fees, locations, working hours, free slots and reviews."
+    },
+    "patient.book_appointment": {
+      "title": "Book Appointment",
+      "roles": ["patient"],
+      "web_route": "/providers/{providerId}/book",
+      "mobile": "Provider Profile > Book Now",
+      "params": ["providerId"],
+      "description": "Choose service, day and free slot, add notes, confirm."
+    },
+    "patient.appointments": {
+      "title": "My Appointments",
+      "roles": ["patient"],
+      "web_route": "/appointments",
+      "mobile": "Appointments tab",
+      "description": "Upcoming, past and cancelled bookings; view, cancel, reschedule, rate after a completed visit."
+    },
+    "patient.review_provider": {
+      "title": "Rate & Review",
+      "roles": ["patient"],
+      "web_route": "/appointments/{bookingId}/review",
+      "mobile": "Appointments tab > Past > Rate",
+      "params": ["bookingId"],
+      "description": "Star rating and comment for a completed visit."
+    },
+    "patient.medical_history": {
+      "title": "Medical History",
+      "roles": ["patient"],
+      "web_route": "/medical-history",
+      "mobile": "Records tab",
+      "description": "Timeline of visits, doctor notes, lab results and imaging; upload or share files."
+    },
+    "patient.profile": {
+      "title": "My Profile",
+      "roles": ["patient"],
+      "web_route": "/profile",
+      "mobile": "Profile tab",
+      "description": "Personal details, password and health profile."
+    },
+
+    "provider.signup": {
+      "title": "Provider Sign Up (Step 1 of 3)",
+      "roles": ["guest"],
+      "web_route": "/provider/signup",
+      "mobile": "Create Account > Provider",
+      "description": "Name, 14-digit national ID, email, phone, password or Google."
+    },
+    "provider.verification": {
+      "title": "Provider Verification (Step 2 of 3)",
+      "roles": ["provider"],
+      "web_route": "/provider/verification",
+      "mobile": "Provider Verification",
+      "description": "Service type, service name, location, phone, postal code, tax number, medical license (PDF/JPG/PNG, 10 MB), Submit for Review."
+    },
+    "provider.under_review": {
+      "title": "Request Under Review (Step 3 of 3)",
+      "roles": ["provider"],
+      "web_route": "/provider/under-review",
+      "mobile": "Request Under Review",
+      "description": "Waiting for admin approval (up to 48 hours); result by email."
+    },
+    "provider.dashboard": {
+      "title": "Provider Dashboard",
+      "roles": ["provider"],
+      "web_route": "/provider/dashboard",
+      "mobile": "Home tab (provider)",
+      "description": "Overview of bookings, ratings and activity."
+    },
+    "provider.bookings": {
+      "title": "My Bookings (Provider)",
+      "roles": ["provider"],
+      "web_route": "/provider/bookings",
+      "mobile": "Appointments tab (provider)",
+      "description": "Today, next 7 days, pending and cancelled; accept or cancel one or many; reschedule; mark visit outcome."
+    },
+    "provider.schedule": {
+      "title": "Weekly Time Slots",
+      "roles": ["provider"],
+      "web_route": "/provider/schedule",
+      "mobile": "Profile > Schedule",
+      "description": "Set working days, hours and days off."
+    },
+    "provider.services": {
+      "title": "Services & Prices",
+      "roles": ["provider"],
+      "web_route": "/provider/services",
+      "mobile": "Profile > Services",
+      "description": "Add services from the MedLink list with price in EGP; activate or deactivate."
+    },
+    "provider.locations": {
+      "title": "Branch Locations",
+      "roles": ["provider"],
+      "web_route": "/provider/locations",
+      "mobile": "Profile > Branches",
+      "description": "Branch name, address, postal code, phone and map position."
+    },
+    "provider.add_medical_record": {
+      "title": "Add Medical History",
+      "roles": ["provider"],
+      "web_route": "/provider/patients/{patientId}/history/new",
+      "mobile": "Bookings > Patient > Add Record",
+      "params": ["patientId"],
+      "description": "Title, diagnosis and description required; notes optional."
+    },
+    "provider.reviews": {
+      "title": "Ratings & Reviews",
+      "roles": ["provider"],
+      "web_route": "/provider/reviews",
+      "mobile": "Profile > Reviews",
+      "description": "Reviews from completed visits."
+    },
+
+    "admin.provider_requests": {
+      "title": "Provider Requests",
+      "roles": ["admin"],
+      "web_route": "/admin/provider-requests",
+      "mobile": null,
+      "description": "Pending provider applications; view license; accept or reject with reason."
+    },
+    "admin.users": {
+      "title": "Manage Users",
+      "roles": ["admin"],
+      "web_route": "/admin/users",
+      "mobile": null,
+      "description": "Activate or deactivate patient and provider accounts."
+    },
+    "admin.reviews": {
+      "title": "Moderate Reviews",
+      "roles": ["admin"],
+      "web_route": "/admin/reviews",
+      "mobile": null,
+      "description": "Approve or remove reviews."
+    },
+    "admin.reports": {
+      "title": "Reports",
+      "roles": ["admin"],
+      "web_route": "/admin/reports",
+      "mobile": null,
+      "description": "Reports on providers, bookings and reviews."
+    }
+  }
+}
