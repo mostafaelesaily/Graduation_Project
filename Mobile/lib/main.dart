@@ -5,6 +5,7 @@ import 'package:medlink/Core/DI/dependecies.dart';
 import 'package:medlink/Core/Router/app_router.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
 import 'package:medlink/Features/Auth/Domain/Repos/auth_repository.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Repos/provider_repository.dart';
 import 'package:medlink/Features/Auth/Presentation/Login/Cubit/login_cubit.dart';
 import 'package:medlink/Features/Auth/Presentation/Provider%20Signup/Cubit/provider_signup_cubit.dart';
 import 'package:medlink/Features/Auth/Presentation/Signup/Cubit/signup_cubit.dart';
@@ -24,8 +25,15 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: const Size(390, 844),
-      child: RepositoryProvider<AuthRepository>.value(
-        value: dependencies.authRepository,
+      child: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<AuthRepository>.value(
+            value: dependencies.authRepository,
+          ),
+          RepositoryProvider<ProviderRepository>.value(
+            value: dependencies.providerRepository,
+          ),
+        ],
         child: MultiBlocProvider(
           providers: [
             BlocProvider(

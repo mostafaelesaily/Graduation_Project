@@ -143,8 +143,8 @@ class ApiClient {
         return false;
       }
 
-      final newAccessToken = decoded['access_token'];
-      final newRefreshToken = decoded['refresh_token'];
+      final newAccessToken = decoded['accessToken'];
+      final newRefreshToken = decoded['refreshToken'];
 
       if (newAccessToken is! String ||
           newAccessToken.isEmpty ||

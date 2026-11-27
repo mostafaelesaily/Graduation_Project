@@ -3,12 +3,16 @@ import 'package:medlink/Core/Network/token_storage.dart';
 import 'package:medlink/Features/Auth/Data/datasources/auth_remote_data_source.dart';
 import 'package:medlink/Features/Auth/Data/repos/auth_repository_impl.dart';
 import 'package:medlink/Features/Auth/Domain/Repos/auth_repository.dart';
+import 'package:medlink/Features/ProviderProfile/Data/datasources/provider_remote_data_source.dart';
+import 'package:medlink/Features/ProviderProfile/Data/repos/provider_repository_impl.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Repos/provider_repository.dart';
 
 class Dependencies {
   late final TokenStorage tokenStorage;
   late final ApiClient apiClient;
   late final AuthRemoteDataSource authRemoteDataSource;
   late final AuthRepository authRepository;
+  late final ProviderRepository providerRepository;
 
   Dependencies() {
     tokenStorage = TokenStorage();
@@ -23,6 +27,10 @@ class Dependencies {
     authRepository = AuthRepositoryImpl(
       remoteDataSource: authRemoteDataSource,
       tokenStorage: tokenStorage,
+    );
+
+    providerRepository = ProviderRepositoryImpl(
+      remoteDataSource: ProviderRemoteDataSource(client: apiClient),
     );
   }
 }

@@ -7,6 +7,8 @@ import 'package:medlink/Features/Home/Presentation/View/widgets/home_greeting.da
 import 'package:medlink/Features/Home/Presentation/View/widgets/home_header.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/top_providers_section.dart';
 import 'package:medlink/Features/Home/Presentation/View/widgets/upcoming_care_section.dart';
+import 'package:go_router/go_router.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Entites/provider_profile.dart';
 
 class HomeTab extends StatelessWidget {
   final String userName;
@@ -30,7 +32,18 @@ class HomeTab extends StatelessWidget {
           SizedBox(height: 24.h),
           const CareServicesGrid(services: HomeMockData.services),
           SizedBox(height: 24.h),
-          const TopProvidersSection(providers: HomeMockData.providers),
+          TopProvidersSection(
+            providers: HomeMockData.providers,
+            onBookSlot: (_) => context.push(
+              '/provider',
+              extra: const ProviderProfile(
+                id: 'B90B8107-0D0A-4AE6-8A4B-75A4E036E260',
+                serviceName: 'Al Salam Hospital',
+                address: 'Heliopolis, Cairo',
+                phoneNumber: '01300000002',
+              ),
+            ),
+          ),
         ],
       ),
     );

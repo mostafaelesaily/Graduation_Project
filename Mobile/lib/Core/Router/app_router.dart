@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:medlink/Features/Auth/Data/models/register_request_model.dart';
 import 'package:medlink/Features/Auth/Presentation/Admin%20Review/View/admin_review.dart';
@@ -6,6 +7,10 @@ import 'package:medlink/Features/Auth/Presentation/Provider%20Signup/View/provid
 import 'package:medlink/Features/Auth/Presentation/Signup/View/signup_screen.dart';
 import 'package:medlink/Features/Home/Presentation/View/home_screen.dart';
 import 'package:medlink/Features/Onboarding/Presentation/View/onboarding_screen.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Entites/provider_profile.dart';
+import 'package:medlink/Features/ProviderProfile/Domain/Repos/provider_repository.dart';
+import 'package:medlink/Features/ProviderProfile/Presentation/Cubit/provider_profile_cubit.dart';
+import 'package:medlink/Features/ProviderProfile/Presentation/View/provider_profile_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -44,6 +49,22 @@ class AppRouter {
         path: '/home',
         name: 'home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/provider',
+        name: 'providerProfile',
+        redirect: (context, state) =>
+            state.extra is ProviderProfile ? null : '/home',
+        builder: (context, state) {
+          final profile = state.extra as ProviderProfile;
+
+          return BlocProvider(
+            create: (context) => ProviderProfileCubit(
+              providerRepository: context.read<ProviderRepository>(),
+            ),
+            child: ProviderProfileScreen(profile: profile),
+          );
+        },
       ),
     ],
   );
