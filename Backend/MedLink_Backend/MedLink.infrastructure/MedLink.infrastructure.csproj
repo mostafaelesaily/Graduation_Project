@@ -26,4 +26,10 @@
     <ProjectReference Include="..\MedLink.Domain\MedLink.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="AI\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

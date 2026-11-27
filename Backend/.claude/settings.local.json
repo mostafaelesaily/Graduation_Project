@@ -28,7 +28,20 @@
       "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT ''Bookings'' AS T, COUNT\\(*\\) AS Cnt FROM Shared.Bookings UNION ALL SELECT ''Reviews'', COUNT\\(*\\) FROM Shared.Reviews UNION ALL SELECT ''MedicalRecords'', COUNT\\(*\\) FROM Shared.MedicalRecords UNION ALL SELECT ''Notification'', COUNT\\(*\\) FROM Shared.Notification UNION ALL SELECT ''AppUsers'', COUNT\\(*\\) FROM Shared.AppUsers UNION ALL SELECT ''ProviderProfiles'', COUNT\\(*\\) FROM Shared.ProviderProfiles;\")",
       "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \"SET NOCOUNT ON; SELECT Id, Email, UserName FROM Shared.AppUsers ORDER BY Email;\")",
       "Bash(sqlcmd -S \"localhost\\\\SQLEXPRESS\" -d MedLink_DB -E -b -Q \":*)",
-      "Bash(timeout 25 dotnet run --project MedLink.Presentation --no-launch-profile)"
+      "Bash(timeout 25 dotnet run --project MedLink.Presentation --no-launch-profile)",
+      "Bash(cp \"D:/All_Projects/Graduation_Project/Ai/Prompts/system-prompt.txt\" \"D:/All_Projects/Graduation_Project/Backend/MedLink_Backend/MedLink.infrastructure/AI/Prompts/system-prompt.txt\")",
+      "Bash(cp D:/All_Projects/Graduation_Project/Ai/Knowledge/*.md D:/All_Projects/Graduation_Project/Ai/Knowledge/*.json \"D:/All_Projects/Graduation_Project/Backend/MedLink_Backend/MedLink.infrastructure/AI/Knowledge/\")",
+      "Bash(redis-cli -h localhost -p 6379 ping)",
+      "Bash(tasklist)",
+      "Bash(kill 1133)",
+      "Bash(mkdir -p /tmp)",
+      "Bash(python -c:*)",
+      "Bash(tasklist //FI \"PID eq 22100\")",
+      "Bash(taskkill //PID 22100 //F)",
+      "Read(//d//**)",
+      "Bash(tasklist //FI \"IMAGENAME eq dotnet.exe\" //FI \"IMAGENAME eq MedLink.Presentation.exe\")",
+      "Bash(tasklist //FI \"IMAGENAME eq MedLink.Presentation.exe\")",
+      "Bash(taskkill //PID 17148 //F)"
     ]
   }
 }
