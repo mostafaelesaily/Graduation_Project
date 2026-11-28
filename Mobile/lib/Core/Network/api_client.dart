@@ -143,8 +143,8 @@ class ApiClient {
         return false;
       }
 
-      final newAccessToken = decoded['access_token'];
-      final newRefreshToken = decoded['refresh_token'];
+      final newAccessToken = decoded['accessToken'];
+      final newRefreshToken = decoded['refreshToken'];
 
       if (newAccessToken is! String ||
           newAccessToken.isEmpty ||
@@ -205,6 +205,23 @@ class ApiClient {
   }) {
     return _request(
       'PUT',
+      path,
+      body: body,
+      queryParameters: queryParameters,
+      headers: headers,
+      requiresAuth: requiresAuth,
+    );
+  }
+
+  Future<Response> patch(
+    String path, {
+    Object? body,
+    Map<String, String>? queryParameters,
+    Map<String, String>? headers,
+    bool requiresAuth = true,
+  }) {
+    return _request(
+      'PATCH',
       path,
       body: body,
       queryParameters: queryParameters,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:medlink/Core/Style/colors_manager.dart';
-import 'package:medlink/Features/Home/Presentation/Models/home_models.dart';
+import 'package:medlink/Features/Appointments/Domain/Entites/appointment.dart';
 
 class UpcomingCareSection extends StatelessWidget {
-  final List<UpcomingAppointment> appointments;
+  final List<Appointment> appointments;
   final VoidCallback? onViewAll;
 
   const UpcomingCareSection({
@@ -61,7 +61,7 @@ class UpcomingCareSection extends StatelessWidget {
 }
 
 class _AppointmentCard extends StatelessWidget {
-  final UpcomingAppointment appointment;
+  final Appointment appointment;
 
   const _AppointmentCard({required this.appointment});
 
@@ -83,37 +83,14 @@ class _AppointmentCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 32.r,
-                backgroundColor: ColorsManager.softBlue,
-                child: Icon(
-                  Icons.person,
-                  color: ColorsManager.primaryColor,
-                  size: 34.sp,
-                ),
-              ),
-              if (appointment.isVideo)
-                Positioned(
-                  right: -2.w,
-                  bottom: -2.w,
-                  child: Container(
-                    padding: EdgeInsets.all(5.w),
-                    decoration: BoxDecoration(
-                      color: ColorsManager.primaryColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Icon(
-                      Icons.videocam_rounded,
-                      color: Colors.white,
-                      size: 12.sp,
-                    ),
-                  ),
-                ),
-            ],
+          CircleAvatar(
+            radius: 32.r,
+            backgroundColor: ColorsManager.softBlue,
+            child: Icon(
+              Icons.person,
+              color: ColorsManager.primaryColor,
+              size: 34.sp,
+            ),
           ),
           SizedBox(width: 14.w),
           Expanded(
@@ -121,7 +98,7 @@ class _AppointmentCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  appointment.doctorName,
+                  appointment.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -132,7 +109,11 @@ class _AppointmentCard extends StatelessWidget {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  '${appointment.specialty} • ${appointment.hospital}',
+                  appointment.address.isEmpty
+                      ? appointment.status == AppointmentStatus.confirmed
+                            ? 'Confirmed'
+                            : 'Waiting for approval'
+                      : appointment.address,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
