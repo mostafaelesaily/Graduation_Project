@@ -58,7 +58,7 @@ class ProviderRemoteDataSource {
     return jsonDecode(response.body) == true;
   }
 
-  Future<void> book(String providerId, DateTime slot) async {
+  Future<String> book(String providerId, DateTime slot) async {
     const path = '/api/Booking';
 
     final response = await client.post(
@@ -72,5 +72,7 @@ class ProviderRemoteDataSource {
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception('Booking failed: ${response.body}');
     }
+
+    return jsonDecode(response.body)['id'];
   }
 }

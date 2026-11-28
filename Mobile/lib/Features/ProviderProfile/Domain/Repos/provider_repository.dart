@@ -5,5 +5,6 @@ abstract class ProviderRepository {
 
   Future<bool> isSlotAvailable(String providerId, DateTime slot);
 
-  Future<void> book(String providerId, DateTime slot);
+  /// Returns the id of the new booking.
+  Future<String> book(String providerId, DateTime slot);
 }

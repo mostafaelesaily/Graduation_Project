@@ -22,7 +22,11 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Image.asset('assets/logo/logo.png', height: 44.h, fit: BoxFit.contain),
+        Image.asset(
+          'assets/logo/logo.png',
+          height: title == null ? 44.h : 32.h,
+          fit: BoxFit.contain,
+        ),
         if (title == null)
           const Spacer()
         else

@@ -16,6 +16,6 @@ class ProviderRepositoryImpl implements ProviderRepository {
       remoteDataSource.isSlotAvailable(providerId, slot);
 
   @override
-  Future<void> book(String providerId, DateTime slot) =>
+  Future<String> book(String providerId, DateTime slot) =>
       remoteDataSource.book(providerId, slot);
 }
