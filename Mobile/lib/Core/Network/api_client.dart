@@ -213,6 +213,23 @@ class ApiClient {
     );
   }
 
+  Future<Response> patch(
+    String path, {
+    Object? body,
+    Map<String, String>? queryParameters,
+    Map<String, String>? headers,
+    bool requiresAuth = true,
+  }) {
+    return _request(
+      'PATCH',
+      path,
+      body: body,
+      queryParameters: queryParameters,
+      headers: headers,
+      requiresAuth: requiresAuth,
+    );
+  }
+
   Future<Response> delete(
     String path, {
     Object? body,

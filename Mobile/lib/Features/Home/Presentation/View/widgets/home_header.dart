@@ -7,11 +7,15 @@ class HomeHeader extends StatelessWidget {
   final VoidCallback? onProfileTap;
   final bool hasUnreadNotifications;
 
+  /// Shown after the logo on tabs other than Home.
+  final String? title;
+
   const HomeHeader({
     super.key,
     this.onNotificationsTap,
     this.onProfileTap,
     this.hasUnreadNotifications = false,
+    this.title,
   });
 
   @override
@@ -19,7 +23,21 @@ class HomeHeader extends StatelessWidget {
     return Row(
       children: [
         Image.asset('assets/logo/logo.png', height: 44.h, fit: BoxFit.contain),
-        const Spacer(),
+        if (title == null)
+          const Spacer()
+        else
+          Expanded(
+            child: Text(
+              '  /  $title',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ColorsManager.textDark,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         _CircleButton(
           icon: Icons.notifications_none_rounded,
           background: Colors.white,

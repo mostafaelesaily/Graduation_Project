@@ -10,7 +10,7 @@ class ProviderRemoteDataSource {
 
   /// The API has no "list providers" endpoint, so this uses the unified search.
   /// The "%" keyword matches every service, around central Cairo.
-  Future<List<ProviderProfileModel>> getProviders() async {
+  Future<List<ProviderProfileModel>> getProviders({int pageSize = 10}) async {
     const path = '/api/Search/UnifiedMedicalSearch';
 
     final response = await client.post(
@@ -21,7 +21,7 @@ class ProviderRemoteDataSource {
         'longitude': 31.2357,
         'radiusInMeters': 50000,
         'pageNumber': 1,
-        'pageSize': 10,
+        'pageSize': pageSize,
       },
     );
 

@@ -8,8 +8,8 @@ class ProviderRepositoryImpl implements ProviderRepository {
   ProviderRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<List<ProviderProfile>> getProviders() =>
-      remoteDataSource.getProviders();
+  Future<List<ProviderProfile>> getProviders({int pageSize = 10}) =>
+      remoteDataSource.getProviders(pageSize: pageSize);
 
   @override
   Future<bool> isSlotAvailable(String providerId, DateTime slot) =>

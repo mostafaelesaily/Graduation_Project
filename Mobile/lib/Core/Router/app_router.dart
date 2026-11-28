@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:medlink/Features/Appointments/Domain/Repos/appointments_repository.dart';
+import 'package:medlink/Features/Appointments/Presentation/Cubit/appointments_cubit.dart';
 import 'package:medlink/Features/Auth/Data/models/register_request_model.dart';
 import 'package:medlink/Features/Auth/Presentation/Admin%20Review/View/admin_review.dart';
 import 'package:medlink/Features/Auth/Presentation/Login/View/login_screen.dart';
@@ -48,7 +50,13 @@ class AppRouter {
       GoRoute(
         path: '/home',
         name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => BlocProvider(
+          create: (context) => AppointmentsCubit(
+            appointmentsRepository: context.read<AppointmentsRepository>(),
+            providerRepository: context.read<ProviderRepository>(),
+          )..load(),
+          child: const HomeScreen(),
+        ),
       ),
       GoRoute(
         path: '/provider',
